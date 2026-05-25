@@ -1,0 +1,159 @@
+# Development Rules — gdxcomp
+# Rust / Tauri / TDD / Git
+#
+# Derived from Andrej Karpathy's LLM coding principles
+# (https://github.com/multica-ai/andrej-karpathy-skills)
+# adapted for this project's stack.
+
+---
+
+## 1. Think Before Coding
+
+**Surface assumptions. Ask when ambiguous. Push back when a simpler path exists.**
+
+- State what you're assuming (ownership, error handling, async/sync, which crate
+  the change belongs in) before writing code.
+- When a request has multiple valid interpretations, name them; don't pick silently.
+- If the obvious solution requires touching 3+ files, check first whether the
+  abstraction boundary is in the right place.
+- Stop and ask if you're unsure which layer owns a responsibility:
+  - FFI detail → `crates/gdx-sys` or `crates/gdx`
+  - Domain logic → `crates/gdxcomp-core`
+  - IPC command → `src-tauri/src/commands.rs`
+  - UI state → `src/App.tsx`; rendering → `src/components/`
+
+---
+
+## 2. Simplicity First
+
+**Minimum code that solves the problem. Nothing speculative.**
+
+- No trait objects, generics, or helper functions for a single call site.
+- No error handling for invariants the code already guarantees.
+- No `#[derive(...)]` attributes beyond what callers actually use.
+- No `async` unless the operation truly blocks; Tauri commands are sync by default here.
+- Three similar lines is better than a premature abstraction.
+- If you write 150 lines and it could be 40, rewrite it.
+
+**Rust-specific anti-patterns to avoid:**
+- `Arc<Mutex<T>>` when `Mutex<T>` in Tauri `State<>` already provides shared access.
+- Custom `Iterator` impl when `.iter().map().filter()` is clear enough.
+- New `enum` variants for temporary state that belongs in a `bool` or `Option`.
+- Wrapping a result in `Ok(...)` then immediately calling `.unwrap()` on it.
+
+---
+
+## 3. Surgical Changes
+
+**Touch only what the request requires. Leave the rest exactly as found.**
+
+- Don't reformat lines you didn't author in this change.
+- Don't add `use` imports for symbols not used by your new code.
+- Don't improve adjacent comments, rename variables, or add `#[allow(...)]` to
+  pre-existing warnings — fix or file those separately.
+- If your change makes an import/variable/function unused, remove it.
+  If it was already unused before your change, leave it (or note it separately).
+- Match the style of the surrounding code even if you'd write it differently.
+
+**The test:** every changed line traces directly to the stated request.
+
+---
+
+## 4. Goal-Driven Execution (TDD)
+
+**Define a verifiable goal. Write the test first. Loop until green.**
+
+For bug fixes:
+```
+1. Write a failing test that reproduces the bug  →  confirm it fails
+2. Fix the code                                  →  confirm test passes
+3. Run cargo test --workspace + npm test         →  confirm no regressions
+```
+
+For new features:
+```
+1. Write tests for the expected behavior         →  confirm they fail
+2. Implement the minimum code to pass            →  tests green
+3. cargo clippy + cargo fmt                      →  CI-clean
+```
+
+For refactors:
+```
+1. Confirm tests are green before you start
+2. Refactor
+3. Confirm tests are still green
+4. No behaviour change = no test change
+```
+
+Never report a task done without a passing test or a stated reason why no test
+applies (e.g. "this is a pure formatting/docs change").
+
+---
+
+## 5. Rust Toolchain Rules
+
+- **`cargo fmt`** before every commit. CI enforces `--check`.
+- **`cargo clippy --workspace --all-targets -- -D warnings`** must be clean.
+  Fix warnings; don't suppress with `#[allow(...)]` unless the lint is a false
+  positive (document why inline).
+- **`cargo test --workspace`** must pass in full before declaring a Rust change done.
+- Unsafe code requires a `// SAFETY:` comment explaining the invariant upheld.
+- FFI calls live only in `crates/gdx-sys` and `crates/gdx`. No `unsafe` in
+  `gdxcomp-core` or `src-tauri`.
+- The global `GDX_LOCK` mutex (in `crates/gdx/src/lock.rs`) must be held for
+  every call into the C library. Do not add parallel FFI paths.
+
+---
+
+## 6. Tauri / IPC Rules
+
+- **Rust side owns state.** `AppState { files: Mutex<Vec<LoadedFile>> }` is the
+  single source of truth. The React frontend is a pure view.
+- All Tauri commands return `Result<T, String>` (the `String` is the error
+  surfaced to the UI). Never panic inside a command.
+- IPC structs must have `#[serde(rename_all = "camelCase")]` so TypeScript
+  callers don't need adapters.
+- `types.ts` is the authoritative IPC contract. Update it whenever a Rust IPC
+  struct changes. `api.ts` contains only typed `invoke` wrappers — no logic.
+- Use `npm` (not `pnpm`) for all Node operations; `pnpm` is not on the bash PATH.
+
+---
+
+## 7. Git Discipline
+
+- **Commit only working code.** `cargo test --workspace` + `npm test` must pass.
+- **One logical change per commit.** Don't bundle a bug fix with a refactor.
+- **Commit message format:**
+  ```
+  <type>(<scope>): <short imperative summary>
+
+  <optional body: why, not what>
+  ```
+  Types: `feat`, `fix`, `refactor`, `test`, `chore`, `docs`.
+  Scope examples: `gdx`, `core`, `tauri`, `ui`, `ci`.
+- Never commit directly to `main` for non-trivial changes; use a branch + PR.
+- Never `--force` push to `main`.
+- Never skip hooks (`--no-verify`) without an explicit reason documented in the
+  commit message.
+- Submodule (`third_party/gdx`) updates require a dedicated commit with the
+  reason for the version bump.
+
+---
+
+## 8. Testing Conventions
+
+| What | Where | Command |
+|---|---|---|
+| FFI link check | implicit | `cargo test --workspace` |
+| GDX read/write | `crates/gdx/tests/roundtrip.rs` | `cargo test -p gdx` |
+| Domain logic | `crates/gdxcomp-core/src/` | `cargo test -p gdxcomp-core` |
+| Real trnsport.gdx | `tests/real_file.rs` (ignored) | `GDX_TEST_FILE=... cargo test -- --ignored` |
+| IAM examples | `tests/example_files.rs` (ignored) | `cargo test -p gdxcomp-core --test example_files -- --ignored` |
+| Frontend | `src/` and `src/components/*.test.*` | `npm test` |
+
+- Ignored tests are ignored by design (slow, require large files). Do not make
+  them non-ignored without discussing the CI cost.
+- Test names describe behaviour, not implementation: `overlay_ykali_across_bau_files`,
+  not `test_build_view`.
+- Assert exact values where the expected output can be derived from `gdxdump`;
+  use `(got - want).abs() < 1e-9` for floats.
