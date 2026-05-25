@@ -74,8 +74,6 @@ pub struct DisplaySetup {
     pub field: Field,
     #[serde(default)]
     pub x_dim: usize,
-    #[serde(default)]
-    pub series_dim: Option<usize>,
     /// x-axis multi-select and non-x single-value filters.
     #[serde(default)]
     pub filters: BTreeMap<usize, Vec<String>>,
@@ -93,7 +91,6 @@ impl DisplaySetup {
             symbol: symbol.into(),
             field: Field::Level,
             x_dim: 0,
-            series_dim: None,
             filters: BTreeMap::new(),
             dim_agg: BTreeMap::new(),
             chart: ChartKind::Line,

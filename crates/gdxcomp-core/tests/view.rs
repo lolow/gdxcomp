@@ -15,8 +15,6 @@ fn par(keys: &[&str], v: f64) -> Record {
     }
 }
 
-/// Write a two-plant / two-market scenario file. `scale` multiplies costs and
-/// `extra` adds a symbol unique to this file (to exercise `common_symbols`).
 fn write_scenario(path: &Path, scale: f64, extra: &str) {
     let mut w = GdxWriter::create(path, "test").unwrap();
     w.write_symbol(
@@ -84,7 +82,6 @@ fn trace<'a>(view: &'a gdxcomp_core::PlotView, name: &str) -> &'a gdxcomp_core::
 fn common_symbols_is_the_intersection() {
     let (_d, files) = two_files();
     let names: Vec<String> = common_symbols(&files).into_iter().map(|s| s.name).collect();
-    // "onlyA"/"onlyB" are excluded; result is sorted.
     assert_eq!(names, vec!["a", "c", "i"]);
 }
 
@@ -96,38 +93,35 @@ fn labels_come_from_file_stems() {
 }
 
 #[test]
-fn overlay_each_file_as_series_with_series_dim() {
+fn one_trace_per_file_with_market_summed() {
     let (_d, files) = two_files();
     let mut setup = DisplaySetup::for_symbol("c");
     setup.x_dim = 0; // plants
-    setup.series_dim = Some(1); // markets
+    setup.dim_agg.insert(1, DimAgg::Sum); // sum over markets
+
     let view = build_view(&files, &setup).unwrap();
 
     assert_eq!(view.kind, SymbolKind::Parameter);
-    assert_eq!(view.x_label, "Dim1"); // domains are "*" in fixtures
-                                      // 2 files x 2 markets = 4 traces.
-    assert_eq!(view.traces.len(), 4);
+    assert_eq!(view.x_label, "Dim1");
+    assert_eq!(view.traces.len(), 2); // one per file
 
-    let base_ny = trace(&view, "base / new-york");
-    assert_eq!(base_ny.x, vec!["seattle", "san-diego"]);
-    assert!((base_ny.y[0] - 0.225).abs() < 1e-12);
-    assert!((base_ny.y[1] - 0.225).abs() < 1e-12);
+    let base = trace(&view, "base");
+    assert_eq!(base.x, vec!["seattle", "san-diego"]);
+    assert!((base.y[0] - 0.378).abs() < 1e-12); // 0.225 + 0.153
+    assert!((base.y[1] - 0.387).abs() < 1e-12); // 0.225 + 0.162
 
-    // Scenario file is scaled x2.
-    let scen_chi = trace(&view, "scen / chicago");
-    assert!((scen_chi.y[0] - 0.306).abs() < 1e-12); // 0.153 * 2
-    assert!((scen_chi.y[1] - 0.324).abs() < 1e-12); // 0.162 * 2
+    let scen = trace(&view, "scen");
+    assert!((scen.y[0] - 0.756).abs() < 1e-12); // ×2
 }
 
 #[test]
-fn no_series_dim_emits_one_trace_per_file_with_all_records() {
+fn one_trace_per_file_no_agg_all_records() {
     let (_d, files) = two_files();
     let mut setup = DisplaySetup::for_symbol("c");
-    setup.x_dim = 0; // plants; market dim unfiltered — all records appear
-    setup.series_dim = None;
+    setup.x_dim = 0;
+    // No dim_agg, no filter on dim 1 → all 4 records appear per file.
     let view = build_view(&files, &setup).unwrap();
 
-    // One trace per file; each has 4 records (2 plants × 2 markets).
     assert_eq!(view.traces.len(), 2);
     let base = trace(&view, "base");
     assert_eq!(base.x.len(), 4);
@@ -139,14 +133,12 @@ fn filters_restrict_records() {
     let (_d, files) = two_files();
     let mut setup = DisplaySetup::for_symbol("c");
     setup.x_dim = 0;
-    setup.series_dim = None;
-    setup.filters.insert(1, vec!["new-york".to_string()]); // only NY market
+    setup.filters.insert(1, vec!["new-york".to_string()]);
     let view = build_view(&files, &setup).unwrap();
 
     let base = trace(&view, "base");
-    assert!((base.y[0] - 0.225).abs() < 1e-12); // seattle->NY only
-    assert!((base.y[1] - 0.225).abs() < 1e-12); // san-diego->NY only
-                                                // Table holds the filtered records only: 2 markets removed -> 2 rows/file.
+    assert!((base.y[0] - 0.225).abs() < 1e-12);
+    assert!((base.y[1] - 0.225).abs() < 1e-12);
     assert_eq!(view.table.len(), 4);
 }
 
@@ -161,7 +153,7 @@ fn missing_symbol_is_an_error() {
 #[test]
 fn x_dim_out_of_range_is_an_error() {
     let (_d, files) = two_files();
-    let mut setup = DisplaySetup::for_symbol("a"); // dim 1
+    let mut setup = DisplaySetup::for_symbol("a");
     setup.x_dim = 5;
     let err = build_view(&files, &setup).unwrap_err();
     assert!(matches!(err, gdxcomp_core::CoreError::DimOutOfRange { .. }));
@@ -171,7 +163,6 @@ fn x_dim_out_of_range_is_an_error() {
 fn display_setup_json_roundtrips() {
     let mut setup = DisplaySetup::for_symbol("c");
     setup.x_dim = 0;
-    setup.series_dim = Some(1);
     setup.field = Field::Marginal;
     setup.chart = ChartKind::Bar;
     setup.dim_agg.insert(1, DimAgg::Mean);
@@ -185,15 +176,12 @@ fn display_setup_json_roundtrips() {
 
 #[test]
 fn nonfinite_values_serialize_as_null() {
-    // A gap (missing x cell for a series) becomes NaN -> JSON null, which
-    // Plotly renders as a break in the line.
+    // NaN (missing x in aggregated trace) must not appear in JSON output.
     let (_d, files) = two_files();
     let mut setup = DisplaySetup::for_symbol("c");
-    setup.x_dim = 1; // markets on x
-    setup.series_dim = Some(0); // plants as series
-    setup.filters.insert(0, vec!["seattle".to_string()]); // keep only seattle
+    setup.x_dim = 0;
+    setup.dim_agg.insert(1, DimAgg::Sum);
     let view = build_view(&files, &setup).unwrap();
     let json = serde_json::to_string(&view).unwrap();
-    // No NaN tokens leak into JSON.
     assert!(!json.contains("NaN"));
 }

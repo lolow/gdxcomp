@@ -58,26 +58,6 @@ export function MappingPanel({ symbol, setup, onChange }: Props) {
       </label>
 
       <label className="field">
-        <span>Series (within file)</span>
-        <select
-          value={setup.seriesDim ?? ""}
-          disabled={scalar}
-          onChange={(e) =>
-            onChange({ seriesDim: e.target.value === "" ? null : Number(e.target.value) })
-          }
-        >
-          <option value="">— none —</option>
-          {dims
-            .filter((i) => i !== setup.xDim)
-            .map((i) => (
-              <option key={i} value={i}>
-                {dimLabel(symbol, i)}
-              </option>
-            ))}
-        </select>
-      </label>
-
-      <label className="field">
         <span>Chart type</span>
         <div className="toggle-group">
           {(["line", "bar"] as ChartKind[]).map((c) => (

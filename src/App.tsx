@@ -101,10 +101,7 @@ export function App() {
   function patchSetup(patch: Partial<DisplaySetup>) {
     setSetup((prev) => {
       if (!prev) return prev;
-      const next = { ...prev, ...patch };
-      // A dimension cannot be both the x-axis and the series.
-      if (next.seriesDim === next.xDim) next.seriesDim = null;
-      return next;
+      return { ...prev, ...patch };
     });
   }
 

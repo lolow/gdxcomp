@@ -2,11 +2,10 @@ import { describe, expect, it } from "vitest";
 import { defaultSetup, fieldsForKind } from "./types";
 
 describe("defaultSetup", () => {
-  it("starts on dim 0 with no series", () => {
+  it("starts on dim 0", () => {
     const s = defaultSetup("c");
     expect(s.symbol).toBe("c");
     expect(s.xDim).toBe(0);
-    expect(s.seriesDim).toBeNull();
     expect(s.chart).toBe("line");
     expect(s.field).toBe("level");
   });

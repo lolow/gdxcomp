@@ -34,7 +34,6 @@ fn builds_overlay_view_for_parameter_c() {
 
     let mut setup = DisplaySetup::for_symbol("c");
     setup.x_dim = 0; // plants
-    setup.series_dim = Some(1); // markets
     let view = build_view(&files, &setup).unwrap();
 
     // Markets: new-york, chicago, topeka -> one series each.
@@ -56,7 +55,6 @@ fn variable_field_selection_works() {
 
     let mut setup = DisplaySetup::for_symbol("x"); // variable, dim 2
     setup.x_dim = 0;
-    setup.series_dim = Some(1);
     setup.field = Field::Level;
     let level = build_view(&files, &setup).unwrap();
     assert!(!level.traces.is_empty());

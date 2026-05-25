@@ -32,7 +32,6 @@ export interface DisplaySetup {
   symbol: string;
   field: Field;
   xDim: number;
-  seriesDim: number | null;
   /** dimension index (as a string key in JSON) -> allowed UEL labels */
   filters: Record<string, string[]>;
   /** per-dim aggregation for dims not filtered to a specific value */
@@ -58,7 +57,6 @@ export interface PlotView {
   field: Field;
   chart: ChartKind;
   xLabel: string;
-  seriesLabel: string | null;
   traces: Trace[];
   dimNames: string[];
   table: TableRow[];
@@ -72,14 +70,13 @@ export interface GetViewResult {
   setup: DisplaySetup;
 }
 
-/** A minimal setup for a symbol: x = dim 0, no series, sum aggregation. */
+/** A minimal setup for a symbol: x = dim 0, no aggregation override. */
 export function defaultSetup(symbol: string): DisplaySetup {
   return {
     files: [],
     symbol,
     field: "level",
     xDim: 0,
-    seriesDim: null,
     filters: {},
     dimAgg: {},
     chart: "line",
