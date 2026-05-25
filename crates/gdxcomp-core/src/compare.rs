@@ -151,15 +151,34 @@ pub fn build_view(files: &[LoadedFile], setup: &DisplaySetup) -> Result<PlotView
     }
 
     // When aggregating, the table mirrors the chart: one row per (file, x) with
-    // the aggregated value. Raw records would be misleading alongside summed traces.
+    // the aggregated value. Each non-x dim is labelled with its agg method or
+    // filter value so every column stays aligned with the header.
     let table: Vec<TableRow> = if needs_agg {
+        let ndim = meta.dim;
         traces
             .iter()
             .flat_map(|t| {
-                t.x.iter().zip(t.y.iter()).map(move |(x, &y)| TableRow {
-                    file: t.name.clone(),
-                    keys: vec![x.clone()],
-                    value: y,
+                t.x.iter().zip(t.y.iter()).map(move |(x, &y)| {
+                    let keys: Vec<String> = (0..ndim)
+                        .map(|d| {
+                            if d == setup.x_dim {
+                                return x.clone();
+                            }
+                            if let Some(agg) = setup.dim_agg.get(&d) {
+                                return match agg {
+                                    DimAgg::Sum => "sum".to_string(),
+                                    DimAgg::Mean => "mean".to_string(),
+                                };
+                            }
+                            setup
+                                .filters
+                                .get(&d)
+                                .and_then(|v| v.first())
+                                .cloned()
+                                .unwrap_or_default()
+                        })
+                        .collect();
+                    TableRow { file: t.name.clone(), keys, value: y }
                 })
             })
             .collect()
