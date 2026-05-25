@@ -66,7 +66,7 @@ header.bar .sub {
   grid-area: center;
   background: var(--panel);
   display: grid;
-  grid-template-rows: auto 1fr auto;
+  grid-template-rows: auto 1fr;
   overflow: hidden;
 }
 .plot-toolbar {
@@ -288,9 +288,8 @@ details.symbol-group:not([open]) .symbol-group-header::before {
   padding: 8px;
 }
 .table-wrap {
-  border-top: 1px solid var(--border);
-  max-height: 38%;
   overflow: auto;
+  height: 100%;
 }
 table {
   border-collapse: collapse;

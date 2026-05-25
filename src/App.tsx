@@ -17,6 +17,7 @@ export function App() {
   // plotSetup is the setup actually submitted to getView; null = nothing plotted yet.
   const [plotSetup, setPlotSetup] = useState<DisplaySetup | null>(null);
   const [view, setView] = useState<PlotView | null>(null);
+  const [tab, setTab] = useState<"chart" | "table">("chart");
   const [error, setError] = useState<string | null>(null);
 
   const syncFromBackend = useCallback(async () => {
@@ -150,11 +151,17 @@ export function App() {
           <button className="primary" disabled={!canPlot} onClick={handlePlot}>
             Plot
           </button>
+          {view && (
+            <div className="toggle-group">
+              <button className={tab === "chart" ? "on" : ""} onClick={() => setTab("chart")}>Chart</button>
+              <button className={tab === "table" ? "on" : ""} onClick={() => setTab("table")}>Table</button>
+            </div>
+          )}
           {error && <span className="error-inline">{error}</span>}
         </div>
         <div className="plot-wrap">
           {view ? (
-            <ChartView view={view} />
+            tab === "chart" ? <ChartView view={view} /> : <DataTable view={view} />
           ) : (
             <div className="empty">
               {files.length === 0
@@ -165,7 +172,6 @@ export function App() {
             </div>
           )}
         </div>
-        {view && <DataTable view={view} />}
       </div>
 
       <div className="col right">
