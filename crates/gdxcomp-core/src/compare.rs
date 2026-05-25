@@ -2,7 +2,7 @@ use serde::Serialize;
 
 use crate::error::{CoreError, Result};
 use crate::model::{LoadedFile, Rec, SymbolKind, SymbolMeta};
-use crate::setup::{ChartKind, DimAgg, DisplaySetup, Field};
+use crate::setup::{DimAgg, DisplaySetup, Field};
 
 const MAX_TRACES: usize = 30;
 
@@ -31,7 +31,6 @@ pub struct PlotView {
     pub symbol: String,
     pub kind: SymbolKind,
     pub field: Field,
-    pub chart: ChartKind,
     pub x_label: String,
     pub traces: Vec<Trace>,
     pub dim_names: Vec<String>,
@@ -155,7 +154,6 @@ pub fn build_view(files: &[LoadedFile], setup: &DisplaySetup) -> Result<PlotView
         symbol: meta.name.clone(),
         kind: meta.kind,
         field: setup.field,
-        chart: setup.chart,
         x_label,
         traces,
         dim_names,

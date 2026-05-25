@@ -51,14 +51,6 @@ impl DimAgg {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
-#[serde(rename_all = "lowercase")]
-pub enum ChartKind {
-    #[default]
-    Line,
-    Bar,
-}
-
 /// A complete, serializable description of what to plot and how.
 ///
 /// This is the unit of JSON import/export: saving it and re-importing it
@@ -80,8 +72,6 @@ pub struct DisplaySetup {
     /// Per-dimension aggregation for dims not filtered to a specific value.
     #[serde(default)]
     pub dim_agg: BTreeMap<usize, DimAgg>,
-    #[serde(default)]
-    pub chart: ChartKind,
 }
 
 impl DisplaySetup {
@@ -93,7 +83,6 @@ impl DisplaySetup {
             x_dim: 0,
             filters: BTreeMap::new(),
             dim_agg: BTreeMap::new(),
-            chart: ChartKind::Line,
         }
     }
 

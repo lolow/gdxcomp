@@ -1,4 +1,4 @@
-import type { ChartKind, DisplaySetup, Field, SymbolMeta } from "../types";
+import type { DisplaySetup, Field, SymbolMeta } from "../types";
 import { fieldsForKind } from "../types";
 
 interface Props {
@@ -57,20 +57,7 @@ export function MappingPanel({ symbol, setup, onChange }: Props) {
         </select>
       </label>
 
-      <label className="field">
-        <span>Chart type</span>
-        <div className="toggle-group">
-          {(["line", "bar"] as ChartKind[]).map((c) => (
-            <button
-              key={c}
-              className={setup.chart === c ? "on" : ""}
-              onClick={() => onChange({ chart: c })}
-            >
-              {c}
-            </button>
-          ))}
-        </div>
-      </label>
+
     </div>
   );
 }

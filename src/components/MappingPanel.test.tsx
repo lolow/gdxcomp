@@ -1,5 +1,5 @@
-import { fireEvent, render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { render, screen } from "@testing-library/react";
+import { describe, expect, it } from "vitest";
 import { MappingPanel } from "./MappingPanel";
 import { defaultSetup, type SymbolMeta } from "../types";
 
@@ -25,10 +25,8 @@ describe("MappingPanel", () => {
     expect(screen.queryByText("Value field")).not.toBeInTheDocument();
   });
 
-  it("emits a chart-type change when toggled", () => {
-    const onChange = vi.fn();
-    render(<MappingPanel symbol={parameter} setup={defaultSetup("c")} onChange={onChange} />);
-    fireEvent.click(screen.getByRole("button", { name: "bar" }));
-    expect(onChange).toHaveBeenCalledWith({ chart: "bar" });
+  it("shows the x-axis selector", () => {
+    render(<MappingPanel symbol={parameter} setup={defaultSetup("c")} onChange={() => {}} />);
+    expect(screen.getByText("X axis")).toBeInTheDocument();
   });
 });

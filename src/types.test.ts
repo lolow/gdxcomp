@@ -6,7 +6,6 @@ describe("defaultSetup", () => {
     const s = defaultSetup("c");
     expect(s.symbol).toBe("c");
     expect(s.xDim).toBe(0);
-    expect(s.chart).toBe("line");
     expect(s.field).toBe("level");
   });
 });

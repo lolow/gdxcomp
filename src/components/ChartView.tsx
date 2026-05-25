@@ -12,18 +12,14 @@ interface Props {
 export function ChartView({ view }: Props) {
   const data = useMemo(
     () =>
-      view.traces.map((t) =>
-        view.chart === "bar"
-          ? { type: "bar", name: t.name, x: t.x, y: t.y }
-          : {
-              type: "scatter",
-              mode: "lines+markers",
-              name: t.name,
-              x: t.x,
-              y: t.y,
-              connectgaps: false,
-            },
-      ),
+      view.traces.map((t) => ({
+        type: "scatter",
+        mode: "lines+markers",
+        name: t.name,
+        x: t.x,
+        y: t.y,
+        connectgaps: false,
+      })),
     [view],
   );
 
@@ -35,7 +31,6 @@ export function ChartView({ view }: Props) {
   const layout = {
     autosize: true,
     margin: { l: 64, r: 16, t: 24, b: 64 },
-    barmode: "group",
     xaxis: { title: { text: view.xLabel }, type: "category", automargin: true },
     yaxis: { title: { text: yTitle }, automargin: true },
     legend: { orientation: "h", y: -0.2 },

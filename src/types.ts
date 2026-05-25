@@ -10,7 +10,6 @@ export type SymbolKind =
 
 export type Field = "level" | "marginal" | "lower" | "upper" | "scale";
 export type DimAgg = "sum" | "mean";
-export type ChartKind = "line" | "bar";
 
 export interface SymbolMeta {
   name: string;
@@ -36,7 +35,6 @@ export interface DisplaySetup {
   filters: Record<string, string[]>;
   /** per-dim aggregation for dims not filtered to a specific value */
   dimAgg: Record<string, DimAgg>;
-  chart: ChartKind;
 }
 
 export interface Trace {
@@ -55,7 +53,6 @@ export interface PlotView {
   symbol: string;
   kind: SymbolKind;
   field: Field;
-  chart: ChartKind;
   xLabel: string;
   traces: Trace[];
   dimNames: string[];
@@ -79,7 +76,6 @@ export function defaultSetup(symbol: string): DisplaySetup {
     xDim: 0,
     filters: {},
     dimAgg: {},
-    chart: "line",
   };
 }
 
