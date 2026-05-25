@@ -81,6 +81,15 @@ export function App() {
     }
   }
 
+  async function handleOpenFolder(path: string) {
+    try {
+      await api.openFolder(path);
+      await syncFromBackend();
+    } catch (e) {
+      setError(String(e));
+    }
+  }
+
   async function handleRemove(path: string) {
     try {
       await api.removeGdx(path);
@@ -136,7 +145,7 @@ export function App() {
       </header>
 
       <div className="col left">
-        <FileBar files={files} onOpen={handleOpen} onRemove={handleRemove} />
+        <FileBar files={files} onOpen={handleOpen} onOpenFolder={handleOpenFolder} onRemove={handleRemove} />
         <SymbolPicker symbols={symbols} selected={setup?.symbol ?? null} onSelect={selectSymbol} />
       </div>
 

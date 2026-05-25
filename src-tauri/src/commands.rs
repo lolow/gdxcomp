@@ -70,6 +70,31 @@ pub fn open_gdx(paths: Vec<String>, state: State<AppState>) -> CmdResult<Vec<Fil
     Ok(snapshot(&files))
 }
 
+/// Load all `.gdx` files found directly inside `path` (non-recursive).
+/// Files already in the selection are skipped. Returns the full updated selection.
+#[tauri::command]
+pub fn open_folder(path: String, state: State<AppState>) -> CmdResult<Vec<FileMeta>> {
+    let dir = PathBuf::from(&path);
+    let mut gdx_paths: Vec<PathBuf> = std::fs::read_dir(&dir)
+        .map_err(|e| format!("{path}: {e}"))?
+        .filter_map(|e| e.ok())
+        .map(|e| e.path())
+        .filter(|p| p.extension().and_then(|e| e.to_str()) == Some("gdx"))
+        .collect();
+    gdx_paths.sort();
+
+    let mut files = state.files.lock().unwrap();
+    for gdx_path in gdx_paths {
+        if files.iter().any(|f| f.path == gdx_path) {
+            continue;
+        }
+        let loaded =
+            LoadedFile::open(&gdx_path).map_err(|e| format!("{}: {e}", gdx_path.display()))?;
+        files.push(loaded);
+    }
+    Ok(snapshot(&files))
+}
+
 /// Remove a file from the selection by its path.
 #[tauri::command]
 pub fn remove_gdx(path: String, state: State<AppState>) -> Vec<FileMeta> {

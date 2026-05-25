@@ -4,10 +4,11 @@ import type { FileMeta } from "../types";
 interface Props {
   files: FileMeta[];
   onOpen: (paths: string[]) => void;
+  onOpenFolder: (path: string) => void;
   onRemove: (path: string) => void;
 }
 
-export function FileBar({ files, onOpen, onRemove }: Props) {
+export function FileBar({ files, onOpen, onOpenFolder, onRemove }: Props) {
   async function pick() {
     const selected = await open({
       multiple: true,
@@ -18,12 +19,24 @@ export function FileBar({ files, onOpen, onRemove }: Props) {
     onOpen(paths);
   }
 
+  async function pickFolder() {
+    const selected = await open({ directory: true });
+    if (!selected) return;
+    const path = Array.isArray(selected) ? selected[0] : selected;
+    onOpenFolder(path);
+  }
+
   return (
     <div className="section">
       <h2>Files</h2>
-      <button className="primary" onClick={pick} style={{ width: "100%", marginBottom: 8 }}>
-        + Add GDX…
-      </button>
+      <div style={{ display: "flex", gap: 4, marginBottom: 8 }}>
+        <button className="primary" onClick={pick} style={{ flex: 1 }}>
+          + Add GDX…
+        </button>
+        <button className="primary" onClick={pickFolder} title="Open all GDX files in a folder">
+          📁
+        </button>
+      </div>
       {files.length === 0 && <div className="empty">No files loaded</div>}
       {files.map((f) => (
         <div className="file" key={f.path} title={f.path}>

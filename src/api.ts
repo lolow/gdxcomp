@@ -13,6 +13,9 @@ export const api = {
   openGdx(paths: string[]): Promise<FileMeta[]> {
     return invoke("open_gdx", { paths });
   },
+  openFolder(path: string): Promise<FileMeta[]> {
+    return invoke("open_folder", { path });
+  },
   removeGdx(path: string): Promise<FileMeta[]> {
     return invoke("remove_gdx", { path });
   },

@@ -11,6 +11,7 @@ pub fn run() {
         .manage(AppState::default())
         .invoke_handler(tauri::generate_handler![
             commands::open_gdx,
+            commands::open_folder,
             commands::remove_gdx,
             commands::list_files,
             commands::common_symbols_cmd,
