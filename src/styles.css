@@ -173,10 +173,67 @@ label.field > span {
 }
 .symbol .name {
   font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 5px;
 }
 .symbol .meta {
   color: var(--muted);
   font-size: 12px;
+}
+
+/* kind badges shown in search results */
+.kind-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 3px;
+  font-size: 10px;
+  font-weight: 700;
+  flex-shrink: 0;
+  color: #fff;
+}
+.kind-parameter { background: #2f54eb; }
+.kind-variable   { background: #389e0d; }
+.kind-equation   { background: #d46b08; }
+.kind-set        { background: #6b7280; }
+.kind-alias      { background: #722ed1; }
+
+/* collapsible type groups */
+.symbol-group {
+  border: none;
+}
+.symbol-group-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  padding: 6px 4px 2px;
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+  gap: 6px;
+}
+.symbol-group-header::-webkit-details-marker { display: none; }
+.symbol-group-header::before {
+  content: "▾";
+  font-size: 10px;
+}
+details.symbol-group:not([open]) .symbol-group-header::before {
+  content: "▸";
+}
+.group-count {
+  font-weight: 400;
+  background: var(--bg);
+  border-radius: 10px;
+  padding: 1px 7px;
+  margin-left: auto;
 }
 
 .toggle-group {
