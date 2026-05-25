@@ -20,7 +20,10 @@ fn loads_and_lists_real_symbols() {
         assert!(names.contains(&expected), "missing symbol {expected}");
     }
     // With a single file every symbol is trivially "common".
-    assert_eq!(common_symbols(std::slice::from_ref(&file)).len(), file.symbols.len());
+    assert_eq!(
+        common_symbols(std::slice::from_ref(&file)).len(),
+        file.symbols.len()
+    );
 }
 
 #[test]
@@ -36,7 +39,11 @@ fn builds_overlay_view_for_parameter_c() {
 
     // Markets: new-york, chicago, topeka -> one series each.
     assert_eq!(view.traces.len(), 3);
-    let ny = view.traces.iter().find(|t| t.name.ends_with("new-york")).unwrap();
+    let ny = view
+        .traces
+        .iter()
+        .find(|t| t.name.ends_with("new-york"))
+        .unwrap();
     let i = ny.x.iter().position(|x| x == "seattle").unwrap();
     assert!((ny.y[i] - 0.225).abs() < 1e-9);
 }
