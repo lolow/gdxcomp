@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 
 use gdx::{GdxWriter, Record, SymbolType};
 use gdxcomp_core::{
-    build_view, common_symbols, ChartKind, DisplaySetup, Field, LoadedFile, SymbolKind,
+    build_view, common_symbols, ChartKind, DimAgg, DisplaySetup, Field, LoadedFile, SymbolKind,
 };
 use tempfile::TempDir;
 
@@ -174,6 +174,7 @@ fn display_setup_json_roundtrips() {
     setup.series_dim = Some(1);
     setup.field = Field::Marginal;
     setup.chart = ChartKind::Bar;
+    setup.dim_agg.insert(1, DimAgg::Mean);
     setup.filters.insert(0, vec!["seattle".to_string()]);
     setup.files = vec![PathBuf::from("a.gdx"), PathBuf::from("b.gdx")];
 

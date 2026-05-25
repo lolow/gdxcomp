@@ -2,7 +2,7 @@ use serde::Serialize;
 
 use crate::error::{CoreError, Result};
 use crate::model::{LoadedFile, Rec, SymbolKind, SymbolMeta};
-use crate::setup::{ChartKind, DisplaySetup, Field};
+use crate::setup::{ChartKind, DimAgg, DisplaySetup, Field};
 
 /// Hard limit on the number of Plotly traces returned in a single view.
 ///
@@ -77,6 +77,7 @@ pub fn common_symbols(files: &[LoadedFile]) -> Vec<SymbolMeta> {
 pub fn refine_setup(files: &[LoadedFile], setup: &DisplaySetup) -> Result<DisplaySetup> {
     let mut refined = setup.clone();
     let first_file = files.iter().find(|f| f.symbol(&setup.symbol).is_some());
+    let meta = first_file.and_then(|f| f.symbol(&setup.symbol));
 
     // Limit x-axis to first 5 UELs when no filter is set yet (avoids overplotting).
     if setup.filters.get(&setup.x_dim).is_none_or(|f| f.is_empty()) {
@@ -103,6 +104,25 @@ pub fn refine_setup(files: &[LoadedFile], setup: &DisplaySetup) -> Result<Displa
                     .filters
                     .insert(sd, vec![keys.into_iter().next().unwrap()]);
             }
+        }
+    }
+
+    // Default uninitialized non-x, non-series dims to sum aggregation.
+    if let Some(m) = meta {
+        for d in 0..m.dim {
+            if d == setup.x_dim {
+                continue;
+            }
+            if setup.series_dim == Some(d) {
+                continue;
+            }
+            if setup.filters.get(&d).is_some_and(|f| !f.is_empty()) {
+                continue;
+            }
+            if setup.dim_agg.contains_key(&d) {
+                continue;
+            }
+            refined.dim_agg.insert(d, DimAgg::Sum);
         }
     }
 
@@ -137,6 +157,11 @@ pub fn build_view(files: &[LoadedFile], setup: &DisplaySetup) -> Result<PlotView
         .count()
         > 1;
 
+    let needs_agg = !setup.dim_agg.is_empty();
+    // When multiple dims have different agg methods, use the first one found.
+    let agg_method = setup.dim_agg.values().copied().next().unwrap_or(DimAgg::Sum);
+
+    let mut x_order: Vec<String> = Vec::new();
     let mut groups: Vec<SeriesGroup> = Vec::new();
     let mut table = Vec::new();
 
@@ -155,6 +180,9 @@ pub fn build_view(files: &[LoadedFile], setup: &DisplaySetup) -> Result<PlotView
                 .series_dim
                 .map(|sd| rec.keys.get(sd).cloned().unwrap_or_default());
 
+            if needs_agg && !x_order.contains(&x) {
+                x_order.push(x.clone());
+            }
             group_for(&mut groups, fi, &series).push(x, value);
 
             table.push(TableRow {
@@ -167,10 +195,19 @@ pub fn build_view(files: &[LoadedFile], setup: &DisplaySetup) -> Result<PlotView
 
     let traces: Vec<Trace> = groups
         .into_iter()
-        .map(|g| Trace {
-            name: trace_name(&files[g.file_index].label, g.series.as_deref(), multi_file),
-            x: g.x,
-            y: g.y,
+        .map(|g| {
+            let file_label = &files[g.file_index].label;
+            let trace_name = trace_name(file_label, g.series.as_deref(), multi_file);
+            let (x, y) = if needs_agg {
+                let y = x_order
+                    .iter()
+                    .map(|x| g.aggregate(x, agg_method))
+                    .collect();
+                (x_order.clone(), y)
+            } else {
+                g.into_pairs()
+            };
+            Trace { name: trace_name, x, y }
         })
         .collect();
 
@@ -237,7 +274,7 @@ fn x_key(rec: &Rec, x_dim: usize) -> String {
 
 fn passes_filters(rec: &Rec, setup: &DisplaySetup) -> bool {
     setup.filters.iter().all(|(dim, allowed)| {
-        if allowed.is_empty() {
+        if allowed.is_empty() || setup.dim_agg.contains_key(dim) {
             return true;
         }
         rec.keys.get(*dim).is_some_and(|k| allowed.contains(k))
@@ -247,14 +284,35 @@ fn passes_filters(rec: &Rec, setup: &DisplaySetup) -> bool {
 struct SeriesGroup {
     file_index: usize,
     series: Option<String>,
-    x: Vec<String>,
-    y: Vec<f64>,
+    cells: Vec<(String, Vec<f64>)>,
 }
 
 impl SeriesGroup {
     fn push(&mut self, x: String, value: f64) {
-        self.x.push(x);
-        self.y.push(value);
+        match self.cells.iter_mut().find(|(cx, _)| cx == &x) {
+            Some((_, vals)) => vals.push(value),
+            None => self.cells.push((x, vec![value])),
+        }
+    }
+
+    fn aggregate(&self, x: &str, how: DimAgg) -> f64 {
+        self.cells
+            .iter()
+            .find(|(cx, _)| cx == x)
+            .map(|(_, vals)| how.apply(vals))
+            .unwrap_or(f64::NAN)
+    }
+
+    fn into_pairs(self) -> (Vec<String>, Vec<f64>) {
+        let mut xs = Vec::new();
+        let mut ys = Vec::new();
+        for (x, vals) in self.cells {
+            for v in vals {
+                xs.push(x.clone());
+                ys.push(v);
+            }
+        }
+        (xs, ys)
     }
 }
 
@@ -273,8 +331,7 @@ fn group_for<'a>(
     groups.push(SeriesGroup {
         file_index,
         series: series.clone(),
-        x: Vec::new(),
-        y: Vec::new(),
+        cells: Vec::new(),
     });
     groups.last_mut().unwrap()
 }

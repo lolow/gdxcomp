@@ -29,6 +29,27 @@ impl Field {
     }
 }
 
+/// How to combine records that share the same (x, series) cell across unmapped
+/// dimensions.  Set per dimension in [`DisplaySetup::dim_agg`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum DimAgg {
+    Sum,
+    Mean,
+}
+
+impl DimAgg {
+    pub fn apply(self, values: &[f64]) -> f64 {
+        let finite: Vec<f64> = values.iter().copied().filter(|v| v.is_finite()).collect();
+        if finite.is_empty() {
+            return f64::NAN;
+        }
+        match self {
+            DimAgg::Sum => finite.iter().sum(),
+            DimAgg::Mean => finite.iter().sum::<f64>() / finite.len() as f64,
+        }
+    }
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "lowercase")]
@@ -48,20 +69,19 @@ pub struct DisplaySetup {
     /// Files this setup was built against (for reproducing the selection).
     #[serde(default)]
     pub files: Vec<PathBuf>,
-    /// Symbol to plot.
     pub symbol: String,
-    /// Value field (Variables/Equations); ignored for Parameters/Sets.
     #[serde(default)]
     pub field: Field,
-    /// Dimension index mapped to the x-axis.
     #[serde(default)]
     pub x_dim: usize,
-    /// Optional dimension index mapped to series (within each file).
     #[serde(default)]
     pub series_dim: Option<usize>,
-    /// Per-dimension allow-lists of UELs. A missing/empty entry means "all".
+    /// x-axis multi-select and non-x single-value filters.
     #[serde(default)]
     pub filters: BTreeMap<usize, Vec<String>>,
+    /// Per-dimension aggregation for dims not filtered to a specific value.
+    #[serde(default)]
+    pub dim_agg: BTreeMap<usize, DimAgg>,
     #[serde(default)]
     pub chart: ChartKind,
 }
@@ -75,16 +95,15 @@ impl DisplaySetup {
             x_dim: 0,
             series_dim: None,
             filters: BTreeMap::new(),
+            dim_agg: BTreeMap::new(),
             chart: ChartKind::Line,
         }
     }
 
-    /// Serialize to pretty JSON.
     pub fn to_json(&self) -> Result<String, serde_json::Error> {
         serde_json::to_string_pretty(self)
     }
 
-    /// Parse from JSON.
     pub fn from_json(json: &str) -> Result<Self, serde_json::Error> {
         serde_json::from_str(json)
     }

@@ -9,6 +9,7 @@ export type SymbolKind =
   | "alias";
 
 export type Field = "level" | "marginal" | "lower" | "upper" | "scale";
+export type DimAgg = "sum" | "mean";
 export type ChartKind = "line" | "bar";
 
 export interface SymbolMeta {
@@ -34,6 +35,8 @@ export interface DisplaySetup {
   seriesDim: number | null;
   /** dimension index (as a string key in JSON) -> allowed UEL labels */
   filters: Record<string, string[]>;
+  /** per-dim aggregation for dims not filtered to a specific value */
+  dimAgg: Record<string, DimAgg>;
   chart: ChartKind;
 }
 
@@ -78,6 +81,7 @@ export function defaultSetup(symbol: string): DisplaySetup {
     xDim: 0,
     seriesDim: null,
     filters: {},
+    dimAgg: {},
     chart: "line",
   };
 }

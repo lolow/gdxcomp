@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { DisplaySetup, SymbolMeta } from "../types";
+import type { DimAgg, DisplaySetup, SymbolMeta } from "../types";
 import { dimLabel } from "./MappingPanel";
 
 interface Props {
@@ -12,7 +12,6 @@ interface Props {
 export function FilterPanel({ symbol, setup, onChange, fetchKeys }: Props) {
   const [keysByDim, setKeysByDim] = useState<Record<number, string[]>>({});
 
-  // Load the available UELs for each dimension whenever the symbol changes.
   useEffect(() => {
     let cancelled = false;
     const dims = Array.from({ length: symbol.dim }, (_, i) => i);
@@ -31,22 +30,8 @@ export function FilterPanel({ symbol, setup, onChange, fetchKeys }: Props) {
     return null;
   }
 
-  function selectedOne(dim: number): string {
-    return setup.filters[String(dim)]?.[0] ?? "";
-  }
-
   function selectedMany(dim: number): string[] {
     return setup.filters[String(dim)] ?? [];
-  }
-
-  function setSingle(dim: number, value: string) {
-    const next = { ...setup.filters };
-    if (value === "") {
-      delete next[String(dim)];
-    } else {
-      next[String(dim)] = [value];
-    }
-    onChange({ filters: next });
   }
 
   function setMany(dim: number, values: string[]) {
@@ -72,6 +57,27 @@ export function FilterPanel({ symbol, setup, onChange, fetchKeys }: Props) {
     return current.length === 0 || current.includes(key);
   }
 
+  // For non-x dims: either an aggregation method or a specific UEL value.
+  function nonXValue(dim: number): string {
+    const uel = setup.filters[String(dim)]?.[0];
+    if (uel) return uel;
+    const agg = setup.dimAgg[String(dim)];
+    return agg ? `__agg:${agg}` : "__agg:sum";
+  }
+
+  function setNonX(dim: number, value: string) {
+    const nextFilters = { ...setup.filters };
+    const nextDimAgg = { ...setup.dimAgg };
+    if (value === "__agg:sum" || value === "__agg:mean") {
+      delete nextFilters[String(dim)];
+      nextDimAgg[String(dim)] = (value === "__agg:sum" ? "sum" : "mean") as DimAgg;
+    } else {
+      nextFilters[String(dim)] = [value];
+      delete nextDimAgg[String(dim)];
+    }
+    onChange({ filters: nextFilters, dimAgg: nextDimAgg });
+  }
+
   return (
     <div className="section">
       <h2>Filters</h2>
@@ -84,6 +90,7 @@ export function FilterPanel({ symbol, setup, onChange, fetchKeys }: Props) {
             {isXDim ? (
               <>
                 <div className="row-gap" style={{ justifyContent: "flex-end" }}>
+                  <button className="ghost" onClick={() => setMany(dim, [...keys])}>all</button>
                   <button className="ghost" onClick={() => setMany(dim, keys.length ? [keys[0]] : [])}>first</button>
                 </div>
                 <div className="checks">
@@ -101,11 +108,9 @@ export function FilterPanel({ symbol, setup, onChange, fetchKeys }: Props) {
                 </div>
               </>
             ) : (
-              <select
-                value={selectedOne(dim)}
-                onChange={(e) => setSingle(dim, e.target.value)}
-              >
-                <option value="">— all —</option>
+              <select value={nonXValue(dim)} onChange={(e) => setNonX(dim, e.target.value)}>
+                <option value="__agg:sum">— sum —</option>
+                <option value="__agg:mean">— mean —</option>
                 {keys.map((k) => (
                   <option key={k} value={k}>{k}</option>
                 ))}
