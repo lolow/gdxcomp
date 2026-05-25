@@ -44,12 +44,10 @@ export function App() {
     let cancelled = false;
     api
       .getView(plotSetup)
-      .then(({ view: v, setup: eff }) => {
+      .then(({ view: v }) => {
         if (cancelled) return;
         setView(v);
         setError(null);
-        // Reflect refined defaults (e.g. auto x-axis filter) back into the controls.
-        setSetup(eff);
       })
       .catch((e) => {
         if (!cancelled) {
