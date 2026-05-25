@@ -102,7 +102,7 @@ pub fn build_view(files: &[LoadedFile], setup: &DisplaySetup) -> Result<PlotView
 
     let mut x_order: Vec<String> = Vec::new();
     let mut groups: Vec<FileGroup> = Vec::new();
-    let mut table = Vec::new();
+    let mut raw_table: Vec<TableRow> = Vec::new();
 
     for (fi, file) in files.iter().enumerate() {
         if file.symbol(&setup.symbol).is_none() {
@@ -121,7 +121,7 @@ pub fn build_view(files: &[LoadedFile], setup: &DisplaySetup) -> Result<PlotView
             }
             group_for(&mut groups, fi).push(x, value);
 
-            table.push(TableRow {
+            raw_table.push(TableRow {
                 file: file.label.clone(),
                 keys: rec.keys.clone(),
                 value,
@@ -149,6 +149,23 @@ pub fn build_view(files: &[LoadedFile], setup: &DisplaySetup) -> Result<PlotView
             max: MAX_TRACES,
         });
     }
+
+    // When aggregating, the table mirrors the chart: one row per (file, x) with
+    // the aggregated value. Raw records would be misleading alongside summed traces.
+    let table: Vec<TableRow> = if needs_agg {
+        traces
+            .iter()
+            .flat_map(|t| {
+                t.x.iter().zip(t.y.iter()).map(move |(x, &y)| TableRow {
+                    file: t.name.clone(),
+                    keys: vec![x.clone()],
+                    value: y,
+                })
+            })
+            .collect()
+    } else {
+        raw_table
+    };
 
     Ok(PlotView {
         symbol: meta.name.clone(),
