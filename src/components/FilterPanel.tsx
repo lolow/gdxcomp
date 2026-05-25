@@ -84,7 +84,6 @@ export function FilterPanel({ symbol, setup, onChange, fetchKeys }: Props) {
             {isXDim ? (
               <>
                 <div className="row-gap" style={{ justifyContent: "flex-end" }}>
-                  <button className="ghost" onClick={() => setMany(dim, [...keys])}>all</button>
                   <button className="ghost" onClick={() => setMany(dim, keys.length ? [keys[0]] : [])}>first</button>
                 </div>
                 <div className="checks">
