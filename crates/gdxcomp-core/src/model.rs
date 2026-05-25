@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
 use gdx::{GdxFile, SymbolType};
@@ -54,21 +53,20 @@ pub struct Rec {
     pub values: [f64; 5],
 }
 
-/// A GDX file loaded fully into memory: an owned, thread-safe snapshot.
+/// A GDX file with only symbol metadata loaded.
 ///
-/// All symbols' records are read eagerly on [`open`](LoadedFile::open), so the
-/// underlying GDX handle is closed before this value is returned. Very large
-/// files are therefore held entirely in memory.
+/// Record data is read from disk on demand via [`read_records`](LoadedFile::read_records).
+/// Because the GDX library opens and closes fast, we reopen for each read rather
+/// than keeping an open handle (handles are not `Send`).
 #[derive(Debug, Clone)]
 pub struct LoadedFile {
     pub label: String,
     pub path: PathBuf,
     pub symbols: Vec<SymbolMeta>,
-    data: HashMap<String, Vec<Rec>>,
 }
 
 impl LoadedFile {
-    /// Open `path` and read every symbol's records into memory.
+    /// Open `path` and load symbol metadata only. No record data is read.
     pub fn open(path: impl AsRef<Path>) -> Result<Self> {
         let path = path.as_ref().to_path_buf();
         let label = path
@@ -78,35 +76,23 @@ impl LoadedFile {
 
         let file = GdxFile::open(&path)?;
 
-        let mut symbols = Vec::with_capacity(file.symbols().len());
-        let mut data = HashMap::new();
-        for info in file.symbols() {
-            let records = file.read_info(info)?;
-            data.insert(
-                info.name.clone(),
-                records
-                    .into_iter()
-                    .map(|r| Rec {
-                        keys: r.keys,
-                        values: r.values,
-                    })
-                    .collect(),
-            );
-            symbols.push(SymbolMeta {
+        let symbols = file
+            .symbols()
+            .iter()
+            .map(|info| SymbolMeta {
                 name: info.name.clone(),
                 dim: info.dim,
                 kind: info.kind.into(),
                 records: info.records,
                 text: info.text.clone(),
                 domains: info.domains.clone(),
-            });
-        }
+            })
+            .collect();
 
         Ok(LoadedFile {
             label,
             path,
             symbols,
-            data,
         })
     }
 
@@ -114,21 +100,38 @@ impl LoadedFile {
         self.symbols.iter().find(|s| s.name == name)
     }
 
-    /// Records for a symbol, or an empty slice if the symbol is absent.
-    pub fn records(&self, name: &str) -> &[Rec] {
-        self.data.get(name).map(Vec::as_slice).unwrap_or(&[])
+    /// Read all records for `symbol` from disk.
+    ///
+    /// Opens and closes the GDX file on every call. This is cheap because the
+    /// library is fast and the symbol table is cached in the file header.
+    pub fn read_records(&self, symbol: &str) -> Result<Vec<Rec>> {
+        let file = GdxFile::open(&self.path)?;
+        match file.symbol(symbol) {
+            Some(info) => {
+                let records = file.read_info(info)?;
+                Ok(records
+                    .into_iter()
+                    .map(|r| Rec {
+                        keys: r.keys,
+                        values: r.values,
+                    })
+                    .collect())
+            }
+            None => Ok(Vec::new()),
+        }
     }
 
     /// Distinct UEL labels appearing in dimension `dim` of `symbol`, in first-seen order.
-    pub fn distinct_keys(&self, symbol: &str, dim: usize) -> Vec<String> {
-        let mut seen = Vec::new();
-        for rec in self.records(symbol) {
+    pub fn distinct_keys(&self, symbol: &str, dim: usize) -> Result<Vec<String>> {
+        let records = self.read_records(symbol)?;
+        let mut seen: Vec<String> = Vec::new();
+        for rec in &records {
             if let Some(k) = rec.keys.get(dim) {
                 if !seen.contains(k) {
                     seen.push(k.clone());
                 }
             }
         }
-        seen
+        Ok(seen)
     }
 }

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api } from "./api";
 import { ChartView } from "./components/ChartView";
 import { DataTable } from "./components/DataTable";
@@ -16,6 +16,11 @@ export function App() {
   const [setup, setSetup] = useState<DisplaySetup | null>(null);
   const [view, setView] = useState<PlotView | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  // Tracks the JSON of the last setup that was sent to get_view. When get_view
+  // returns an effective setup (refined defaults), we update state only if the
+  // content actually changed — avoiding an infinite render loop.
+  const lastSentSetupJson = useRef<string | null>(null);
 
   const syncFromBackend = useCallback(async () => {
     const f = await api.listFiles();
@@ -39,12 +44,21 @@ export function App() {
       return;
     }
     let cancelled = false;
+    const sentJson = JSON.stringify(setup);
+    lastSentSetupJson.current = sentJson;
+
     api
       .getView(setup)
-      .then((v) => {
-        if (!cancelled) {
-          setView(v);
-          setError(null);
+      .then(({ view: v, setup: effectiveSetup }) => {
+        if (cancelled) return;
+        setView(v);
+        setError(null);
+        // Sync back the effective setup (may have auto-selected series defaults).
+        // Only update state if the content changed to avoid a re-render loop.
+        const effectiveJson = JSON.stringify(effectiveSetup);
+        if (effectiveJson !== sentJson) {
+          lastSentSetupJson.current = effectiveJson;
+          setSetup(effectiveSetup);
         }
       })
       .catch((e) => {

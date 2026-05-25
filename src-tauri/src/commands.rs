@@ -1,18 +1,19 @@
 //! Tauri commands: the only surface the frontend talks to.
 //!
 //! All GDX access and view computation happens here via [`gdxcomp_core`].
-//! Loaded files are cached in app state so re-plotting never re-reads the disk.
+//! Files are cached in app state (metadata only); records are read lazily per
+//! `get_view` call and not held in memory between calls.
 
 use std::path::PathBuf;
 use std::sync::Mutex;
 
 use gdxcomp_core::{
-    build_view, common_symbols, DisplaySetup, LoadedFile, PlotView, SymbolMeta,
+    build_view, common_symbols, refine_setup, DisplaySetup, LoadedFile, PlotView, SymbolMeta,
 };
 use serde::Serialize;
 use tauri::State;
 
-/// In-memory cache of the currently selected files, in user-chosen order.
+/// In-memory cache of the currently selected files (metadata only).
 #[derive(Default)]
 pub struct AppState {
     files: Mutex<Vec<LoadedFile>>,
@@ -35,6 +36,16 @@ impl From<&LoadedFile> for FileMeta {
             symbols: f.symbols.clone(),
         }
     }
+}
+
+/// Result of `get_view`: the rendered plot plus the effective setup that was
+/// actually used (may differ from the input if `refine_setup` added defaults).
+/// The UI stores `setup` back so the filter panel reflects auto-selections.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GetViewResult {
+    pub view: PlotView,
+    pub setup: DisplaySetup,
 }
 
 type CmdResult<T> = Result<T, String>;
@@ -89,7 +100,8 @@ pub fn distinct_keys(symbol: String, dim: usize, state: State<AppState>) -> Vec<
     let files = state.files.lock().unwrap();
     let mut out: Vec<String> = Vec::new();
     for f in files.iter() {
-        for k in f.distinct_keys(&symbol, dim) {
+        let keys = f.distinct_keys(&symbol, dim).unwrap_or_default();
+        for k in keys {
             if !out.contains(&k) {
                 out.push(k);
             }
@@ -99,10 +111,19 @@ pub fn distinct_keys(symbol: String, dim: usize, state: State<AppState>) -> Vec<
 }
 
 /// Build the chart + table for the given display setup.
+///
+/// Applies `refine_setup` before building so that an unfiltered series dimension
+/// defaults to the first available UEL. Returns the effective setup alongside the
+/// view so the UI can update its filter state.
 #[tauri::command]
-pub fn get_view(setup: DisplaySetup, state: State<AppState>) -> CmdResult<PlotView> {
+pub fn get_view(setup: DisplaySetup, state: State<AppState>) -> CmdResult<GetViewResult> {
     let files = state.files.lock().unwrap();
-    build_view(&files, &setup).map_err(|e| e.to_string())
+    let effective = refine_setup(&files, &setup).map_err(|e| e.to_string())?;
+    let view = build_view(&files, &effective).map_err(|e| e.to_string())?;
+    Ok(GetViewResult {
+        view,
+        setup: effective,
+    })
 }
 
 /// Write a display setup to `path` as JSON.

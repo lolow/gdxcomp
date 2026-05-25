@@ -63,6 +63,14 @@ export interface PlotView {
   table: TableRow[];
 }
 
+/** Returned by get_view: the rendered plot plus the effective setup used.
+ *  The setup may have been refined (e.g. series filter auto-defaulted to first
+ *  value); the UI stores it back so the filter panel stays in sync. */
+export interface GetViewResult {
+  view: PlotView;
+  setup: DisplaySetup;
+}
+
 /** A minimal setup for a symbol: x = dim 0, no series, sum aggregation. */
 export function defaultSetup(symbol: string): DisplaySetup {
   return {

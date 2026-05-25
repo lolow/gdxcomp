@@ -4,6 +4,13 @@ use crate::error::{CoreError, Result};
 use crate::model::{LoadedFile, Rec, SymbolKind, SymbolMeta};
 use crate::setup::{Aggregation, ChartKind, DisplaySetup, Field};
 
+/// Hard limit on the number of Plotly traces returned in a single view.
+///
+/// With `refine_setup` auto-picking the first series value this is rarely hit,
+/// but it catches cases where the user has manually set many filter values across
+/// many files. The frontend surfaces the error so the user can add filters.
+const MAX_TRACES: usize = 30;
+
 /// One plotted series: a file (optionally split by a series dimension).
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct Trace {
@@ -60,7 +67,48 @@ pub fn common_symbols(files: &[LoadedFile]) -> Vec<SymbolMeta> {
     shared
 }
 
+/// Fill in sensible defaults for a setup that has no filter on the series dimension.
+///
+/// When `series_dim` is set but carries no filter, this picks the first distinct
+/// UEL value from the series dimension so the initial plot shows one series per
+/// file rather than potentially hundreds. The caller (Tauri command) applies this
+/// before `build_view` and returns the effective setup to the UI so the filter
+/// panel reflects the auto-selection.
+pub fn refine_setup(files: &[LoadedFile], setup: &DisplaySetup) -> Result<DisplaySetup> {
+    let Some(sd) = setup.series_dim else {
+        return Ok(setup.clone());
+    };
+
+    // Respect an existing filter.
+    if setup.filters.get(&sd).is_some_and(|f| !f.is_empty()) {
+        return Ok(setup.clone());
+    }
+
+    // Read distinct series values from the first file that has the symbol.
+    let keys = files
+        .iter()
+        .find(|f| f.symbol(&setup.symbol).is_some())
+        .map(|f| f.distinct_keys(&setup.symbol, sd))
+        .transpose()?
+        .unwrap_or_default();
+
+    // Only one value anyway; the filter adds nothing.
+    if keys.len() <= 1 {
+        return Ok(setup.clone());
+    }
+
+    let mut refined = setup.clone();
+    refined
+        .filters
+        .insert(sd, vec![keys.into_iter().next().unwrap()]);
+    Ok(refined)
+}
+
 /// Build the chart + table for `setup` across the given files.
+///
+/// Records are read from disk lazily here — only the symbol named in `setup` is
+/// read. Call [`refine_setup`] first to ensure the series dimension has a
+/// reasonable default filter; without it this will likely hit [`CoreError::TooManyTraces`].
 pub fn build_view(files: &[LoadedFile], setup: &DisplaySetup) -> Result<PlotView> {
     // Representative metadata from the first file that has the symbol.
     let meta = files
@@ -92,7 +140,8 @@ pub fn build_view(files: &[LoadedFile], setup: &DisplaySetup) -> Result<PlotView
         if file.symbol(&setup.symbol).is_none() {
             continue;
         }
-        for rec in file.records(&setup.symbol) {
+        let records = file.read_records(&setup.symbol)?;
+        for rec in &records {
             if !passes_filters(rec, setup) {
                 continue;
             }
@@ -115,7 +164,7 @@ pub fn build_view(files: &[LoadedFile], setup: &DisplaySetup) -> Result<PlotView
         }
     }
 
-    let traces = groups
+    let traces: Vec<Trace> = groups
         .into_iter()
         .map(|g| {
             let y = x_order
@@ -129,6 +178,13 @@ pub fn build_view(files: &[LoadedFile], setup: &DisplaySetup) -> Result<PlotView
             }
         })
         .collect();
+
+    if traces.len() > MAX_TRACES {
+        return Err(CoreError::TooManyTraces {
+            traces: traces.len(),
+            max: MAX_TRACES,
+        });
+    }
 
     Ok(PlotView {
         symbol: meta.name.clone(),

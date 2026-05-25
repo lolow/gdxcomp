@@ -10,7 +10,7 @@ mod error;
 mod model;
 mod setup;
 
-pub use compare::{build_view, common_symbols, PlotView, TableRow, Trace};
+pub use compare::{build_view, common_symbols, refine_setup, PlotView, TableRow, Trace};
 pub use error::{CoreError, Result};
 pub use model::{LoadedFile, Rec, SymbolKind, SymbolMeta};
 pub use setup::{Aggregation, ChartKind, DisplaySetup, Field};

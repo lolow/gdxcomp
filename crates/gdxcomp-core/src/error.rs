@@ -14,6 +14,9 @@ pub enum CoreError {
         ndim: usize,
     },
 
+    #[error("too many traces ({traces} > {max}); add a filter to reduce the number of series")]
+    TooManyTraces { traces: usize, max: usize },
+
     #[error("invalid display setup: {0}")]
     InvalidSetup(String),
 

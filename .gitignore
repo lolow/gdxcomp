@@ -14,3 +14,6 @@ dist-ssr
 # Editor / OS
 .DS_Store
 *.swp
+
+# Local GDX example files (large binaries, not versioned)
+gdx_examples/
