@@ -15,34 +15,61 @@ function fmt(v: number | null): string {
 
 export function DataTable({ view }: Props) {
   const [sort, setSort] = useState<SortKey | null>(null);
-  // Columns: File, <dim names>, Value. Indices: 0=file, 1..n=keys, n+1=value.
-  const valueCol = view.dimNames.length + 1;
+  const [colFilters, setColFilters] = useState<Record<number, string>>({});
 
-  const cell = (row: TableRow, col: number): string | number => {
+  // Columns: File, <dim names>, Value.
+  const valueCol = view.dimNames.length + 1;
+  const headers = ["File", ...view.dimNames, "Value"];
+
+  const cellStr = (row: TableRow, col: number): string => {
+    if (col === 0) return row.file;
+    if (col === valueCol) return fmt(row.value);
+    return row.keys[col - 1] ?? "";
+  };
+
+  const cellSort = (row: TableRow, col: number): string | number => {
     if (col === 0) return row.file;
     if (col === valueCol) return row.value ?? Number.NEGATIVE_INFINITY;
     return row.keys[col - 1] ?? "";
   };
 
   const rows = useMemo(() => {
-    if (!sort) return view.table;
-    const sorted = [...view.table];
-    sorted.sort((a, b) => {
-      const va = cell(a, sort.col);
-      const vb = cell(b, sort.col);
-      if (va < vb) return -sort.dir;
-      if (va > vb) return sort.dir;
-      return 0;
-    });
-    return sorted;
+    const activeFilters = Object.entries(colFilters).filter(([, v]) => v.trim());
+    let result = view.table;
+
+    if (activeFilters.length > 0) {
+      result = result.filter((row) =>
+        activeFilters.every(([col, f]) =>
+          cellStr(row, Number(col)).toLowerCase().includes(f.toLowerCase()),
+        ),
+      );
+    }
+
+    if (sort) {
+      result = [...result].sort((a, b) => {
+        const va = cellSort(a, sort.col);
+        const vb = cellSort(b, sort.col);
+        if (va < vb) return -sort.dir;
+        if (va > vb) return sort.dir;
+        return 0;
+      });
+    }
+
+    return result;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [view.table, sort]);
+  }, [view.table, sort, colFilters]);
 
   function clickHeader(col: number) {
-    setSort((s) => (s && s.col === col ? { col, dir: (s.dir * -1) as 1 | -1 } : { col, dir: 1 }));
+    setSort((s) => (s?.col === col ? { col, dir: (s.dir * -1) as 1 | -1 } : { col, dir: 1 }));
   }
 
-  const headers = ["File", ...view.dimNames, "Value"];
+  function setFilter(col: number, value: string) {
+    setColFilters((prev) => {
+      const next = { ...prev, [col]: value };
+      if (!value) delete next[col];
+      return next;
+    });
+  }
 
   return (
     <div className="table-wrap">
@@ -50,9 +77,21 @@ export function DataTable({ view }: Props) {
         <thead>
           <tr>
             {headers.map((h, i) => (
-              <th key={i} onClick={() => clickHeader(i)}>
+              <th key={i} className="sortable" onClick={() => clickHeader(i)}>
                 {h}
                 {sort?.col === i ? (sort.dir === 1 ? " ▲" : " ▼") : ""}
+              </th>
+            ))}
+          </tr>
+          <tr className="filter-row">
+            {headers.map((_, i) => (
+              <th key={i}>
+                <input
+                  type="search"
+                  value={colFilters[i] ?? ""}
+                  onChange={(e) => setFilter(i, e.target.value)}
+                  placeholder="filter…"
+                />
               </th>
             ))}
           </tr>

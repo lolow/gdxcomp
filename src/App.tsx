@@ -149,14 +149,12 @@ export function App() {
       <div className="center">
         <div className="plot-toolbar">
           <button className="primary" disabled={!canPlot} onClick={handlePlot}>
-            Plot
+            Update
           </button>
-          {view && (
-            <div className="toggle-group">
-              <button className={tab === "chart" ? "on" : ""} onClick={() => setTab("chart")}>Chart</button>
-              <button className={tab === "table" ? "on" : ""} onClick={() => setTab("table")}>Table</button>
-            </div>
-          )}
+          <div className="toggle-group">
+            <button className={tab === "chart" ? "on" : ""} onClick={() => setTab("chart")}>Chart</button>
+            <button className={tab === "table" ? "on" : ""} onClick={() => setTab("table")}>Table</button>
+          </div>
           {error && <span className="error-inline">{error}</span>}
         </div>
         <div className="plot-wrap">

@@ -307,8 +307,32 @@ th {
   position: sticky;
   top: 0;
   background: var(--panel);
-  cursor: pointer;
   user-select: none;
+}
+th.sortable {
+  cursor: pointer;
+}
+th.sortable:hover {
+  background: var(--bg);
+}
+/* filter input row sits just below the sort header row */
+.filter-row th {
+  top: 29px; /* must match sort header height */
+  padding: 3px 4px;
+  border-bottom: 2px solid var(--border);
+}
+.filter-row input {
+  width: 100%;
+  font: inherit;
+  font-size: 11px;
+  padding: 2px 5px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  background: var(--bg);
+}
+.filter-row input:focus {
+  outline: none;
+  border-color: var(--accent);
 }
 td.num {
   text-align: right;
