@@ -60,9 +60,8 @@ fn refine_setup_defaults_non_x_dims_to_sum() {
         Some(DimAgg::Sum),
         "refine_setup must default non-x dim to sum"
     );
-    // x-axis must be limited to first 5 periods.
-    let x_filter = refined.filters.get(&0).expect("x-axis filter must be set");
-    assert_eq!(x_filter.len(), 5);
+    // x-axis filter is left empty (show all) — not restricted by refine_setup.
+    assert!(refined.filters.get(&0).is_none_or(|f| f.is_empty()));
 }
 
 #[test]

@@ -59,25 +59,11 @@ pub fn common_symbols(files: &[LoadedFile]) -> Vec<SymbolMeta> {
 }
 
 /// Fill in sensible defaults before `build_view`:
-/// - x-axis limited to first 5 UELs if unfiltered
 /// - uninitialized non-x dims defaulted to sum aggregation
 pub fn refine_setup(files: &[LoadedFile], setup: &DisplaySetup) -> Result<DisplaySetup> {
     let mut refined = setup.clone();
     let first_file = files.iter().find(|f| f.symbol(&setup.symbol).is_some());
     let meta = first_file.and_then(|f| f.symbol(&setup.symbol));
-
-    // Limit x-axis to first 5 UELs when no filter is set yet.
-    if setup.filters.get(&setup.x_dim).is_none_or(|f| f.is_empty()) {
-        let keys = first_file
-            .map(|f| f.distinct_keys(&setup.symbol, setup.x_dim))
-            .transpose()?
-            .unwrap_or_default();
-        if keys.len() > 5 {
-            refined
-                .filters
-                .insert(setup.x_dim, keys.into_iter().take(5).collect());
-        }
-    }
 
     // Default uninitialized non-x dims to sum aggregation.
     if let Some(m) = meta {
