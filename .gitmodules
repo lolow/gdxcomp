@@ -1,0 +1,3 @@
+[submodule "crates/gdx-sys/third_party/gdx"]
+	path = crates/gdx-sys/third_party/gdx
+	url = https://github.com/GAMS-dev/gdx.git

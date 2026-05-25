@@ -1,0 +1,16 @@
+/target
+/src-tauri/target
+**/*.rs.bk
+
+# Tauri-generated code (schemas, etc.)
+/src-tauri/gen
+
+# Node / Vite / Tauri frontend
+node_modules
+dist
+dist-ssr
+.vite
+
+# Editor / OS
+.DS_Store
+*.swp

@@ -1,0 +1,12 @@
+[package]
+name = "gdx-sys"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Raw FFI bindings to the GAMS GDX C library (libgdxcclib64), built from the vendored GAMS-dev/gdx source."
+links = "gdxcclib64"
+build = "build.rs"
+publish = false
+
+[build-dependencies]
+cmake = "0.1"
