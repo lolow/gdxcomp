@@ -9,7 +9,6 @@ export type SymbolKind =
   | "alias";
 
 export type Field = "level" | "marginal" | "lower" | "upper" | "scale";
-export type Aggregation = "sum" | "mean" | "min" | "max" | "count";
 export type ChartKind = "line" | "bar";
 
 export interface SymbolMeta {
@@ -35,7 +34,6 @@ export interface DisplaySetup {
   seriesDim: number | null;
   /** dimension index (as a string key in JSON) -> allowed UEL labels */
   filters: Record<string, string[]>;
-  aggregate: Aggregation;
   chart: ChartKind;
 }
 
@@ -80,7 +78,6 @@ export function defaultSetup(symbol: string): DisplaySetup {
     xDim: 0,
     seriesDim: null,
     filters: {},
-    aggregate: "sum",
     chart: "line",
   };
 }

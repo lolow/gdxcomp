@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 
 use gdx::{GdxWriter, Record, SymbolType};
 use gdxcomp_core::{
-    build_view, common_symbols, Aggregation, ChartKind, DisplaySetup, Field, LoadedFile, SymbolKind,
+    build_view, common_symbols, ChartKind, DisplaySetup, Field, LoadedFile, SymbolKind,
 };
 use tempfile::TempDir;
 
@@ -120,25 +120,18 @@ fn overlay_each_file_as_series_with_series_dim() {
 }
 
 #[test]
-fn aggregation_collapses_unmapped_dimension() {
+fn no_series_dim_emits_one_trace_per_file_with_all_records() {
     let (_d, files) = two_files();
     let mut setup = DisplaySetup::for_symbol("c");
-    setup.x_dim = 0; // plants; market dim is unmapped -> aggregated
+    setup.x_dim = 0; // plants; market dim unfiltered — all records appear
     setup.series_dim = None;
-    setup.aggregate = Aggregation::Sum;
     let view = build_view(&files, &setup).unwrap();
 
-    // One trace per file.
+    // One trace per file; each has 4 records (2 plants × 2 markets).
     assert_eq!(view.traces.len(), 2);
     let base = trace(&view, "base");
-    // seattle: 0.225 + 0.153 ; san-diego: 0.225 + 0.162
-    assert!((base.y[0] - 0.378).abs() < 1e-12);
-    assert!((base.y[1] - 0.387).abs() < 1e-12);
-
-    setup.aggregate = Aggregation::Mean;
-    let view = build_view(&files, &setup).unwrap();
-    let base = trace(&view, "base");
-    assert!((base.y[0] - 0.189).abs() < 1e-12); // (0.225+0.153)/2
+    assert_eq!(base.x.len(), 4);
+    assert_eq!(base.y.len(), 4);
 }
 
 #[test]
@@ -181,7 +174,6 @@ fn display_setup_json_roundtrips() {
     setup.series_dim = Some(1);
     setup.field = Field::Marginal;
     setup.chart = ChartKind::Bar;
-    setup.aggregate = Aggregation::Mean;
     setup.filters.insert(0, vec!["seattle".to_string()]);
     setup.files = vec![PathBuf::from("a.gdx"), PathBuf::from("b.gdx")];
 

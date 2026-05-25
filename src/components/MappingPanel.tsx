@@ -1,10 +1,4 @@
-import type {
-  Aggregation,
-  ChartKind,
-  DisplaySetup,
-  Field,
-  SymbolMeta,
-} from "../types";
+import type { ChartKind, DisplaySetup, Field, SymbolMeta } from "../types";
 import { fieldsForKind } from "../types";
 
 interface Props {
@@ -18,7 +12,6 @@ export function dimLabel(symbol: SymbolMeta, i: number): string {
   return d && d !== "*" ? `${d} (dim ${i + 1})` : `Dim ${i + 1}`;
 }
 
-const AGGREGATIONS: Aggregation[] = ["sum", "mean", "min", "max", "count"];
 
 export function MappingPanel({ symbol, setup, onChange }: Props) {
   const dims = Array.from({ length: symbol.dim }, (_, i) => i);
@@ -81,20 +74,6 @@ export function MappingPanel({ symbol, setup, onChange }: Props) {
                 {dimLabel(symbol, i)}
               </option>
             ))}
-        </select>
-      </label>
-
-      <label className="field">
-        <span>Aggregate over other dims</span>
-        <select
-          value={setup.aggregate}
-          onChange={(e) => onChange({ aggregate: e.target.value as Aggregation })}
-        >
-          {AGGREGATIONS.map((a) => (
-            <option key={a} value={a}>
-              {a}
-            </option>
-          ))}
         </select>
       </label>
 

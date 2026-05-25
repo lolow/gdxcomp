@@ -2,7 +2,7 @@ use serde::Serialize;
 
 use crate::error::{CoreError, Result};
 use crate::model::{LoadedFile, Rec, SymbolKind, SymbolMeta};
-use crate::setup::{Aggregation, ChartKind, DisplaySetup, Field};
+use crate::setup::{ChartKind, DisplaySetup, Field};
 
 /// Hard limit on the number of Plotly traces returned in a single view.
 ///
@@ -132,7 +132,6 @@ pub fn build_view(files: &[LoadedFile], setup: &DisplaySetup) -> Result<PlotView
         .count()
         > 1;
 
-    let mut x_order: Vec<String> = Vec::new();
     let mut groups: Vec<SeriesGroup> = Vec::new();
     let mut table = Vec::new();
 
@@ -151,10 +150,7 @@ pub fn build_view(files: &[LoadedFile], setup: &DisplaySetup) -> Result<PlotView
                 .series_dim
                 .map(|sd| rec.keys.get(sd).cloned().unwrap_or_default());
 
-            if !x_order.contains(&x) {
-                x_order.push(x.clone());
-            }
-            group_for(&mut groups, fi, &series).add(&x, value);
+            group_for(&mut groups, fi, &series).push(x, value);
 
             table.push(TableRow {
                 file: file.label.clone(),
@@ -166,16 +162,10 @@ pub fn build_view(files: &[LoadedFile], setup: &DisplaySetup) -> Result<PlotView
 
     let traces: Vec<Trace> = groups
         .into_iter()
-        .map(|g| {
-            let y = x_order
-                .iter()
-                .map(|x| g.aggregate(x, setup.aggregate))
-                .collect();
-            Trace {
-                name: trace_name(&files[g.file_index].label, g.series.as_deref(), multi_file),
-                x: x_order.clone(),
-                y,
-            }
+        .map(|g| Trace {
+            name: trace_name(&files[g.file_index].label, g.series.as_deref(), multi_file),
+            x: g.x,
+            y: g.y,
         })
         .collect();
 
@@ -249,27 +239,17 @@ fn passes_filters(rec: &Rec, setup: &DisplaySetup) -> bool {
     })
 }
 
-/// One plotted series' accumulator: the values seen at each x label, before
-/// aggregation.
 struct SeriesGroup {
     file_index: usize,
     series: Option<String>,
-    cells: Vec<(String, Vec<f64>)>,
+    x: Vec<String>,
+    y: Vec<f64>,
 }
 
 impl SeriesGroup {
-    fn add(&mut self, x: &str, value: f64) {
-        match self.cells.iter_mut().find(|(cx, _)| cx == x) {
-            Some((_, vals)) => vals.push(value),
-            None => self.cells.push((x.to_string(), vec![value])),
-        }
-    }
-
-    fn aggregate(&self, x: &str, how: Aggregation) -> f64 {
-        match self.cells.iter().find(|(cx, _)| cx == x) {
-            Some((_, vals)) => how.apply(vals),
-            None => f64::NAN,
-        }
+    fn push(&mut self, x: String, value: f64) {
+        self.x.push(x);
+        self.y.push(value);
     }
 }
 
@@ -288,7 +268,8 @@ fn group_for<'a>(
     groups.push(SeriesGroup {
         file_index,
         series: series.clone(),
-        cells: Vec::new(),
+        x: Vec::new(),
+        y: Vec::new(),
     });
     groups.last_mut().unwrap()
 }

@@ -29,39 +29,6 @@ impl Field {
     }
 }
 
-/// How to combine values that fall into the same (x, series) cell, i.e. across
-/// dimensions that are neither the x-axis nor the series.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
-#[serde(rename_all = "lowercase")]
-pub enum Aggregation {
-    #[default]
-    Sum,
-    Mean,
-    Min,
-    Max,
-    Count,
-}
-
-impl Aggregation {
-    /// Aggregate finite values. `NaN` inputs (Undefined/NA) are ignored; an
-    /// empty input yields `NaN`.
-    pub fn apply(self, values: &[f64]) -> f64 {
-        let finite: Vec<f64> = values.iter().copied().filter(|v| !v.is_nan()).collect();
-        if matches!(self, Aggregation::Count) {
-            return finite.len() as f64;
-        }
-        if finite.is_empty() {
-            return f64::NAN;
-        }
-        match self {
-            Aggregation::Sum => finite.iter().sum(),
-            Aggregation::Mean => finite.iter().sum::<f64>() / finite.len() as f64,
-            Aggregation::Min => finite.iter().copied().fold(f64::INFINITY, f64::min),
-            Aggregation::Max => finite.iter().copied().fold(f64::NEG_INFINITY, f64::max),
-            Aggregation::Count => unreachable!(),
-        }
-    }
-}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "lowercase")]
@@ -95,15 +62,11 @@ pub struct DisplaySetup {
     /// Per-dimension allow-lists of UELs. A missing/empty entry means "all".
     #[serde(default)]
     pub filters: BTreeMap<usize, Vec<String>>,
-    /// How to combine values over unmapped dimensions.
-    #[serde(default)]
-    pub aggregate: Aggregation,
     #[serde(default)]
     pub chart: ChartKind,
 }
 
 impl DisplaySetup {
-    /// A minimal setup for a symbol: x = dimension 0, no series, sum-aggregate.
     pub fn for_symbol(symbol: impl Into<String>) -> Self {
         DisplaySetup {
             files: Vec::new(),
@@ -112,7 +75,6 @@ impl DisplaySetup {
             x_dim: 0,
             series_dim: None,
             filters: BTreeMap::new(),
-            aggregate: Aggregation::Sum,
             chart: ChartKind::Line,
         }
     }
