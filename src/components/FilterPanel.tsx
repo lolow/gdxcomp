@@ -51,8 +51,7 @@ export function FilterPanel({ symbol, setup, onChange, fetchKeys }: Props) {
 
   function setMany(dim: number, values: string[]) {
     const next = { ...setup.filters };
-    const all = keysByDim[dim] ?? [];
-    if (values.length === 0 || values.length === all.length) {
+    if (values.length === 0) {
       delete next[String(dim)];
     } else {
       next[String(dim)] = values;
@@ -85,8 +84,8 @@ export function FilterPanel({ symbol, setup, onChange, fetchKeys }: Props) {
             {isXDim ? (
               <>
                 <div className="row-gap" style={{ justifyContent: "flex-end" }}>
-                  <button className="ghost" onClick={() => setMany(dim, [])}>all</button>
-                  <button className="ghost" onClick={() => setMany(dim, keys.length ? [keys[0]] : [])}>none</button>
+                  <button className="ghost" onClick={() => setMany(dim, [...keys])}>all</button>
+                  <button className="ghost" onClick={() => setMany(dim, keys.length ? [keys[0]] : [])}>first</button>
                 </div>
                 <div className="checks">
                   {keys.length === 0 && <div className="empty">no values</div>}

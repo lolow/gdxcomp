@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "./api";
 import { ChartView } from "./components/ChartView";
 import { DataTable } from "./components/DataTable";
@@ -14,13 +14,10 @@ export function App() {
   const [files, setFiles] = useState<FileMeta[]>([]);
   const [symbols, setSymbols] = useState<SymbolMeta[]>([]);
   const [setup, setSetup] = useState<DisplaySetup | null>(null);
+  // plotSetup is the setup actually submitted to getView; null = nothing plotted yet.
+  const [plotSetup, setPlotSetup] = useState<DisplaySetup | null>(null);
   const [view, setView] = useState<PlotView | null>(null);
   const [error, setError] = useState<string | null>(null);
-
-  // Tracks the JSON of the last setup that was sent to get_view. When get_view
-  // returns an effective setup (refined defaults), we update state only if the
-  // content actually changed — avoiding an infinite render loop.
-  const lastSentSetupJson = useRef<string | null>(null);
 
   const syncFromBackend = useCallback(async () => {
     const f = await api.listFiles();
@@ -37,29 +34,21 @@ export function App() {
     [symbols, setup],
   );
 
-  // Recompute the view whenever the setup or file set changes.
+  // Fire getView only when the user explicitly clicks Plot.
   useEffect(() => {
-    if (!setup || !setup.symbol || files.length === 0) {
+    if (!plotSetup || !plotSetup.symbol || files.length === 0) {
       setView(null);
       return;
     }
     let cancelled = false;
-    const sentJson = JSON.stringify(setup);
-    lastSentSetupJson.current = sentJson;
-
     api
-      .getView(setup)
-      .then(({ view: v, setup: effectiveSetup }) => {
+      .getView(plotSetup)
+      .then(({ view: v, setup: eff }) => {
         if (cancelled) return;
         setView(v);
         setError(null);
-        // Sync back the effective setup (may have auto-selected series defaults).
-        // Only update state if the content changed to avoid a re-render loop.
-        const effectiveJson = JSON.stringify(effectiveSetup);
-        if (effectiveJson !== sentJson) {
-          lastSentSetupJson.current = effectiveJson;
-          setSetup(effectiveSetup);
-        }
+        // Reflect refined defaults (e.g. auto x-axis filter) back into the controls.
+        setSetup(eff);
       })
       .catch((e) => {
         if (!cancelled) {
@@ -70,7 +59,11 @@ export function App() {
     return () => {
       cancelled = true;
     };
-  }, [setup, files]);
+  }, [plotSetup]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  function handlePlot() {
+    if (setup) setPlotSetup({ ...setup });
+  }
 
   async function handleOpen(paths: string[]) {
     try {
@@ -101,6 +94,7 @@ export function App() {
 
   function selectSymbol(name: string) {
     setSetup(defaultSetup(name));
+    setView(null);
   }
 
   function patchSetup(patch: Partial<DisplaySetup>) {
@@ -130,6 +124,8 @@ export function App() {
     [setup?.symbol],
   );
 
+  const canPlot = Boolean(setup?.symbol && files.length > 0);
+
   return (
     <div className="app">
       <header className="bar">
@@ -150,15 +146,22 @@ export function App() {
       </div>
 
       <div className="center">
+        <div className="plot-toolbar">
+          <button className="primary" disabled={!canPlot} onClick={handlePlot}>
+            Plot
+          </button>
+          {error && <span className="error-inline">{error}</span>}
+        </div>
         <div className="plot-wrap">
-          {error && <div className="error">{error}</div>}
           {view ? (
             <ChartView view={view} />
           ) : (
             <div className="empty">
               {files.length === 0
                 ? "Add one or more GDX files to begin."
-                : "Pick a symbol to plot."}
+                : !setup?.symbol
+                  ? "Pick a symbol to plot."
+                  : "Click Plot to render the chart."}
             </div>
           )}
         </div>

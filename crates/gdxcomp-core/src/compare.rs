@@ -75,32 +75,37 @@ pub fn common_symbols(files: &[LoadedFile]) -> Vec<SymbolMeta> {
 /// before `build_view` and returns the effective setup to the UI so the filter
 /// panel reflects the auto-selection.
 pub fn refine_setup(files: &[LoadedFile], setup: &DisplaySetup) -> Result<DisplaySetup> {
-    let Some(sd) = setup.series_dim else {
-        return Ok(setup.clone());
-    };
-
-    // Respect an existing filter.
-    if setup.filters.get(&sd).is_some_and(|f| !f.is_empty()) {
-        return Ok(setup.clone());
-    }
-
-    // Read distinct series values from the first file that has the symbol.
-    let keys = files
-        .iter()
-        .find(|f| f.symbol(&setup.symbol).is_some())
-        .map(|f| f.distinct_keys(&setup.symbol, sd))
-        .transpose()?
-        .unwrap_or_default();
-
-    // Only one value anyway; the filter adds nothing.
-    if keys.len() <= 1 {
-        return Ok(setup.clone());
-    }
-
     let mut refined = setup.clone();
-    refined
-        .filters
-        .insert(sd, vec![keys.into_iter().next().unwrap()]);
+    let first_file = files.iter().find(|f| f.symbol(&setup.symbol).is_some());
+
+    // Limit x-axis to first 5 UELs when no filter is set yet (avoids overplotting).
+    if setup.filters.get(&setup.x_dim).is_none_or(|f| f.is_empty()) {
+        let keys = first_file
+            .map(|f| f.distinct_keys(&setup.symbol, setup.x_dim))
+            .transpose()?
+            .unwrap_or_default();
+        if keys.len() > 5 {
+            refined
+                .filters
+                .insert(setup.x_dim, keys.into_iter().take(5).collect());
+        }
+    }
+
+    // Auto-select first series value when unfiltered (avoids TooManyTraces).
+    if let Some(sd) = setup.series_dim {
+        if setup.filters.get(&sd).is_none_or(|f| f.is_empty()) {
+            let keys = first_file
+                .map(|f| f.distinct_keys(&setup.symbol, sd))
+                .transpose()?
+                .unwrap_or_default();
+            if keys.len() > 1 {
+                refined
+                    .filters
+                    .insert(sd, vec![keys.into_iter().next().unwrap()]);
+            }
+        }
+    }
+
     Ok(refined)
 }
 

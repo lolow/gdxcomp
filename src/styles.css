@@ -66,8 +66,19 @@ header.bar .sub {
   grid-area: center;
   background: var(--panel);
   display: grid;
-  grid-template-rows: 1fr auto;
+  grid-template-rows: auto 1fr auto;
   overflow: hidden;
+}
+.plot-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--border);
+}
+.error-inline {
+  color: #c0392b;
+  font-size: 13px;
 }
 
 .section {
