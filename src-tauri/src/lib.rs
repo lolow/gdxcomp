@@ -2,13 +2,20 @@
 
 mod commands;
 
-use commands::AppState;
+use commands::{load_cli_args, AppState};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    let initial_files = load_cli_args();
+    let state = if initial_files.is_empty() {
+        AppState::default()
+    } else {
+        AppState::with_files(initial_files)
+    };
+
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
-        .manage(AppState::default())
+        .manage(state)
         .invoke_handler(tauri::generate_handler![
             commands::open_gdx,
             commands::open_folder,

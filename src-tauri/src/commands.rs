@@ -19,6 +19,60 @@ pub struct AppState {
     files: Mutex<Vec<LoadedFile>>,
 }
 
+impl AppState {
+    pub fn with_files(files: Vec<LoadedFile>) -> Self {
+        AppState {
+            files: Mutex::new(files),
+        }
+    }
+}
+
+/// Parse CLI arguments and return pre-loaded files for the initial app state.
+///
+/// Each positional argument (no leading `-`) is treated as a directory (all
+/// `.gdx` files inside, sorted) or a file (loaded directly; the shell already
+/// expands globs). Unknown paths and load errors are printed to stderr.
+pub fn load_cli_args() -> Vec<LoadedFile> {
+    let raw: Vec<PathBuf> = std::env::args()
+        .skip(1)
+        .filter(|a| !a.starts_with('-'))
+        .flat_map(|arg| {
+            let p = PathBuf::from(&arg);
+            if p.is_dir() {
+                let mut gdx: Vec<PathBuf> = std::fs::read_dir(&p)
+                    .map(|rd| {
+                        rd.filter_map(|e| e.ok())
+                            .map(|e| e.path())
+                            .filter(|p| p.extension().and_then(|e| e.to_str()) == Some("gdx"))
+                            .collect()
+                    })
+                    .unwrap_or_default();
+                gdx.sort();
+                gdx
+            } else if p.is_file() {
+                vec![p]
+            } else {
+                if !arg.is_empty() {
+                    eprintln!("gdxcomp: {arg}: no such file or directory");
+                }
+                vec![]
+            }
+        })
+        .collect();
+
+    let mut files: Vec<LoadedFile> = Vec::new();
+    for path in raw {
+        if files.iter().any(|f| f.path == path) {
+            continue;
+        }
+        match LoadedFile::open(&path) {
+            Ok(loaded) => files.push(loaded),
+            Err(e) => eprintln!("gdxcomp: {}: {e}", path.display()),
+        }
+    }
+    files
+}
+
 /// Lightweight per-file summary sent to the UI.
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
