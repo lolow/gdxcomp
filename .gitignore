@@ -17,3 +17,4 @@ dist-ssr
 
 # Local GDX example files (large binaries, not versioned)
 gdx_examples/
+*.gdx
