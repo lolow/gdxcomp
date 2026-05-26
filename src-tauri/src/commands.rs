@@ -73,7 +73,7 @@ fn distinctive_names(labels: &[String]) -> Vec<String> {
         .collect()
 }
 
-fn recompute_scenarios(entries: &mut Vec<FileEntry>) {
+fn recompute_scenarios(entries: &mut [FileEntry]) {
     let labels: Vec<String> = entries.iter().map(|e| e.file.label.clone()).collect();
     let names = distinctive_names(&labels);
     for (entry, name) in entries.iter_mut().zip(names.iter()) {

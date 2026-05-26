@@ -995,7 +995,7 @@ dependencies = [
 
 [[package]]
 name = "gdx"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "gdx-sys",
  "thiserror 1.0.69",
@@ -1003,14 +1003,14 @@ dependencies = [
 
 [[package]]
 name = "gdx-sys"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "cmake",
 ]
 
 [[package]]
 name = "gdxcomp"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "gdxcomp-core",
  "serde",
@@ -1022,7 +1022,7 @@ dependencies = [
 
 [[package]]
 name = "gdxcomp-core"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "gdx",
  "serde",

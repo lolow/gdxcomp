@@ -263,7 +263,7 @@ dependencies = [
 
 [[package]]
 name = "gdx"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "gdx-sys",
  "tempfile",
@@ -272,14 +272,14 @@ dependencies = [
 
 [[package]]
 name = "gdx-sys"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "cmake",
 ]
 
 [[package]]
 name = "gdxcomp-core"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "criterion",
  "gdx",

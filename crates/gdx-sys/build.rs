@@ -35,13 +35,24 @@ fn main() {
     println!("cargo:rustc-link-search=native={}", libdir.display());
     println!("cargo:rustc-link-lib=dylib=gdxcclib64");
 
-    // Make the library discoverable when running tests / `cargo run` in dev,
-    // where the .so lives in the build directory rather than next to the binary.
-    println!("cargo:rustc-link-arg=-Wl,-rpath,{}", libdir.display());
-    // And next to the executable, for a bundled app that ships the .so alongside.
-    println!("cargo:rustc-link-arg=-Wl,-rpath,$ORIGIN");
+    let target_os = std::env::var("CARGO_CFG_TARGET_OS").unwrap_or_default();
+    match target_os.as_str() {
+        "linux" => {
+            println!("cargo:rustc-link-arg=-Wl,-rpath,{}", libdir.display());
+            // $ORIGIN = directory containing the executable (ELF rpath token).
+            println!("cargo:rustc-link-arg=-Wl,-rpath,$ORIGIN");
+        }
+        "macos" => {
+            println!("cargo:rustc-link-arg=-Wl,-rpath,{}", libdir.display());
+            // @loader_path = directory containing the loading binary (macOS equivalent).
+            println!("cargo:rustc-link-arg=-Wl,-rpath,@loader_path");
+        }
+        _ => {
+            // Windows: DLL must reside alongside the executable; no rpath concept.
+        }
+    }
 
-    // Expose the directory holding libgdxcclib64.so to dependent crates as
+    // Expose the directory holding the shared library to dependent crates as
     // DEP_GDXCCLIB64_LIBDIR (via the `links` key) so the app can bundle it.
     println!("cargo:libdir={}", libdir.display());
 
