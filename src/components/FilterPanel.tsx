@@ -1,15 +1,16 @@
 import { useEffect, useState } from "react";
-import type { DimAgg, DisplaySetup, SymbolMeta } from "../types";
+import type { AppMode, DimAgg, DisplaySetup, SymbolMeta } from "../types";
 import { dimLabel } from "./MappingPanel";
 
 interface Props {
   symbol: SymbolMeta;
   setup: DisplaySetup;
+  mode: AppMode;
   onChange: (patch: Partial<DisplaySetup>) => void;
   fetchKeys: (dim: number) => Promise<string[]>;
 }
 
-export function FilterPanel({ symbol, setup, onChange, fetchKeys }: Props) {
+export function FilterPanel({ symbol, setup, mode, onChange, fetchKeys }: Props) {
   const [keysByDim, setKeysByDim] = useState<Record<number, string[]>>({});
 
   useEffect(() => {
@@ -86,7 +87,7 @@ export function FilterPanel({ symbol, setup, onChange, fetchKeys }: Props) {
         const isXDim = dim === setup.xDim;
         return (
           <div key={dim} className="field">
-            <span style={{ color: "var(--muted)", fontSize: 12 }}>{dimLabel(symbol, dim)}</span>
+            <span style={{ color: "var(--muted)", fontSize: 12 }}>{dimLabel(symbol, dim, mode)}</span>
             {isXDim ? (
               <>
                 <div className="row-gap" style={{ justifyContent: "flex-end" }}>

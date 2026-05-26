@@ -126,13 +126,18 @@ pub fn build_view(files: &[LoadedFile], setup: &DisplaySetup) -> Result<PlotView
     validate_dim(&meta, setup.x_dim)?;
 
     let dim_names = dimension_names(&meta);
-    let x_label = axis_label(&meta, &dim_names, setup.x_dim);
 
     // When the x-axis dimension is named "t", map UEL labels to calendar years.
     let year_mapper: Option<YearMapper> = dim_names
         .get(setup.x_dim)
         .filter(|n| n.as_str() == "t")
         .map(|_| YearMapper::new(files));
+
+    let x_label = if year_mapper.is_some() {
+        "year".to_string()
+    } else {
+        axis_label(&meta, &dim_names, setup.x_dim)
+    };
 
     // Map a raw UEL key to its display string (year as integer string, or the UEL itself).
     let year_str = |raw: &str| -> String {

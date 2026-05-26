@@ -275,10 +275,11 @@ export function App() {
         {rightOpen && (
           currentSymbol && setup ? (
             <>
-              <MappingPanel symbol={currentSymbol} setup={setup} onChange={patchSetup} />
+              <MappingPanel symbol={currentSymbol} setup={setup} mode={mode} onChange={patchSetup} />
               <FilterPanel
                 symbol={currentSymbol}
                 setup={setup}
+                mode={mode}
                 onChange={patchSetup}
                 fetchKeys={fetchKeys}
               />

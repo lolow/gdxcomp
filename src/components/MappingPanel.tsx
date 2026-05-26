@@ -1,19 +1,24 @@
-import type { DisplaySetup, Field, SymbolMeta } from "../types";
+import type { AppMode, DisplaySetup, Field, SymbolMeta } from "../types";
 import { fieldsForKind } from "../types";
 
 interface Props {
   symbol: SymbolMeta;
   setup: DisplaySetup;
+  mode: AppMode;
   onChange: (patch: Partial<DisplaySetup>) => void;
 }
 
-export function dimLabel(symbol: SymbolMeta, i: number): string {
+export function dimLabel(symbol: SymbolMeta, i: number, mode?: AppMode): string {
   const d = symbol.domains[i];
-  return d && d !== "*" ? `${d} (dim ${i + 1})` : `Dim ${i + 1}`;
+  if (d && d !== "*") {
+    const name = mode === "witch" && d === "t" ? "year(t)" : d;
+    return `${name} (dim ${i + 1})`;
+  }
+  return `Dim ${i + 1}`;
 }
 
 
-export function MappingPanel({ symbol, setup, onChange }: Props) {
+export function MappingPanel({ symbol, setup, mode, onChange }: Props) {
   const dims = Array.from({ length: symbol.dim }, (_, i) => i);
   const fields = fieldsForKind(symbol.kind);
   const scalar = symbol.dim === 0;
@@ -50,7 +55,7 @@ export function MappingPanel({ symbol, setup, onChange }: Props) {
           ) : (
             dims.map((i) => (
               <option key={i} value={i}>
-                {dimLabel(symbol, i)}
+                {dimLabel(symbol, i, mode)}
               </option>
             ))
           )}

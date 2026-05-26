@@ -16,17 +16,17 @@ const parameter: SymbolMeta = { ...variable, name: "c", kind: "parameter" };
 
 describe("MappingPanel", () => {
   it("shows the value-field selector for variables", () => {
-    render(<MappingPanel symbol={variable} setup={defaultSetup("x")} onChange={() => {}} />);
+    render(<MappingPanel symbol={variable} setup={defaultSetup("x")} mode="gdx" onChange={() => {}} />);
     expect(screen.getByText("Value field")).toBeInTheDocument();
   });
 
   it("hides the value-field selector for parameters", () => {
-    render(<MappingPanel symbol={parameter} setup={defaultSetup("c")} onChange={() => {}} />);
+    render(<MappingPanel symbol={parameter} setup={defaultSetup("c")} mode="gdx" onChange={() => {}} />);
     expect(screen.queryByText("Value field")).not.toBeInTheDocument();
   });
 
   it("shows the x-axis selector", () => {
-    render(<MappingPanel symbol={parameter} setup={defaultSetup("c")} onChange={() => {}} />);
+    render(<MappingPanel symbol={parameter} setup={defaultSetup("c")} mode="gdx" onChange={() => {}} />);
     expect(screen.getByText("X axis")).toBeInTheDocument();
   });
 });
