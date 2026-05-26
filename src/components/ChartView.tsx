@@ -31,10 +31,13 @@ export function ChartView({ view, showZero }: Props) {
       ? `${view.symbol} (${view.field})`
       : view.symbol;
 
+  const xAxisType =
+    view.traces.length > 0 && typeof view.traces[0].x[0] === "number" ? "linear" : "category";
+
   const layout = {
     autosize: true,
     margin: { l: 64, r: 16, t: 24, b: 64 },
-    xaxis: { title: { text: view.xLabel }, type: "category", automargin: true },
+    xaxis: { title: { text: view.xLabel }, type: xAxisType, automargin: true },
     yaxis: { title: { text: yTitle }, automargin: true, rangemode },
     legend: { orientation: "h", y: -0.2 },
     font: { family: "system-ui, sans-serif", size: 12 },

@@ -127,7 +127,13 @@ export function App() {
   }
 
   function selectSymbol(name: string) {
-    setSetup(defaultSetup(name));
+    const sym = symbols.find((s) => s.name === name);
+    let setup = defaultSetup(name);
+    if (mode === "witch" && sym) {
+      const tIdx = sym.domains.indexOf("t");
+      if (tIdx >= 0) setup = { ...setup, xDim: tIdx };
+    }
+    setSetup(setup);
     setView(null);
   }
 

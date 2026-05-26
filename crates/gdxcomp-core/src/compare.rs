@@ -3,14 +3,45 @@ use serde::Serialize;
 use crate::error::{CoreError, Result};
 use crate::model::{LoadedFile, Rec, SymbolKind, SymbolMeta};
 use crate::setup::{DimAgg, DisplaySetup, Field};
+use crate::witch::YearMapper;
 
 const MAX_TRACES: usize = 30;
+
+/// A single x-axis value: either a categorical string or a numeric year.
+#[derive(Debug, Clone, Serialize)]
+#[serde(untagged)]
+pub enum XValue {
+    Str(String),
+    Num(f64),
+}
+
+impl PartialEq for XValue {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (XValue::Str(a), XValue::Str(b)) => a == b,
+            (XValue::Num(a), XValue::Num(b)) => a == b,
+            _ => false,
+        }
+    }
+}
+
+impl PartialEq<str> for XValue {
+    fn eq(&self, other: &str) -> bool {
+        matches!(self, XValue::Str(s) if s == other)
+    }
+}
+
+impl PartialEq<&str> for XValue {
+    fn eq(&self, other: &&str) -> bool {
+        matches!(self, XValue::Str(s) if s == *other)
+    }
+}
 
 /// One plotted series — one per file.
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct Trace {
     pub name: String,
-    pub x: Vec<String>,
+    pub x: Vec<XValue>,
     /// Non-finite values serialize as JSON `null` (a gap in the line).
     pub y: Vec<f64>,
 }
@@ -97,6 +128,21 @@ pub fn build_view(files: &[LoadedFile], setup: &DisplaySetup) -> Result<PlotView
     let dim_names = dimension_names(&meta);
     let x_label = axis_label(&meta, &dim_names, setup.x_dim);
 
+    // When the x-axis dimension is named "t", map UEL labels to calendar years.
+    let year_mapper: Option<YearMapper> = dim_names
+        .get(setup.x_dim)
+        .filter(|n| n.as_str() == "t")
+        .map(|_| YearMapper::new(files));
+
+    // Map a raw UEL key to its display string (year as integer string, or the UEL itself).
+    let year_str = |raw: &str| -> String {
+        year_mapper
+            .as_ref()
+            .and_then(|m| m.get(raw))
+            .map(|y| format!("{:.0}", y))
+            .unwrap_or_else(|| raw.to_string())
+    };
+
     let needs_agg = !setup.dim_agg.is_empty();
     let agg_method = setup
         .dim_agg
@@ -119,31 +165,47 @@ pub fn build_view(files: &[LoadedFile], setup: &DisplaySetup) -> Result<PlotView
                 continue;
             }
             let value = rec.values[setup.field.index()];
-            let x = x_key(rec, setup.x_dim);
+            let raw = x_key(rec, setup.x_dim);
+            let x = year_str(&raw);
 
             if needs_agg && !x_order.contains(&x) {
                 x_order.push(x.clone());
             }
             group_for(&mut groups, fi).push(x, value);
 
+            // Apply year mapping to the x-dim key in the table row too.
+            let mut keys = rec.keys.clone();
+            if let Some(k) = keys.get_mut(setup.x_dim) {
+                *k = year_str(k);
+            }
             raw_table.push(TableRow {
                 file: file.label.clone(),
-                keys: rec.keys.clone(),
+                keys,
                 value,
             });
         }
     }
 
+    let to_xvalue = |s: String| -> XValue {
+        if year_mapper.is_some() {
+            if let Ok(n) = s.parse::<f64>() {
+                return XValue::Num(n);
+            }
+        }
+        XValue::Str(s)
+    };
+
     let traces: Vec<Trace> = groups
         .into_iter()
         .map(|g| {
             let name = files[g.file_index].label.clone();
-            let (x, y) = if needs_agg {
+            let (xs, y) = if needs_agg {
                 let y = x_order.iter().map(|x| g.aggregate(x, agg_method)).collect();
                 (x_order.clone(), y)
             } else {
                 g.into_pairs()
             };
+            let x = xs.into_iter().map(&to_xvalue).collect();
             Trace { name, x, y }
         })
         .collect();
@@ -164,10 +226,14 @@ pub fn build_view(files: &[LoadedFile], setup: &DisplaySetup) -> Result<PlotView
             .iter()
             .flat_map(|t| {
                 t.x.iter().zip(t.y.iter()).map(move |(x, &y)| {
+                    let x_str = match x {
+                        XValue::Str(s) => s.clone(),
+                        XValue::Num(n) => format!("{:.0}", n),
+                    };
                     let keys: Vec<String> = (0..ndim)
                         .map(|d| {
                             if d == setup.x_dim {
-                                return x.clone();
+                                return x_str.clone();
                             }
                             if let Some(agg) = setup.dim_agg.get(&d) {
                                 return match agg {

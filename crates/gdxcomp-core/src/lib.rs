@@ -9,8 +9,9 @@ mod compare;
 mod error;
 mod model;
 mod setup;
+mod witch;
 
-pub use compare::{build_view, common_symbols, refine_setup, PlotView, TableRow, Trace};
+pub use compare::{build_view, common_symbols, refine_setup, PlotView, TableRow, Trace, XValue};
 pub use error::{CoreError, Result};
 pub use model::{LoadedFile, Rec, SymbolKind, SymbolMeta};
 pub use setup::{DimAgg, DisplaySetup, Field};

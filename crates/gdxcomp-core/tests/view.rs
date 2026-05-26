@@ -106,7 +106,11 @@ fn one_trace_per_file_with_market_summed() {
     assert_eq!(view.traces.len(), 2); // one per file
 
     let base = trace(&view, "base");
-    assert_eq!(base.x, vec!["seattle", "san-diego"]);
+    assert!(base
+        .x
+        .iter()
+        .zip(["seattle", "san-diego"])
+        .all(|(a, b)| a == b));
     assert!((base.y[0] - 0.378).abs() < 1e-12); // 0.225 + 0.153
     assert!((base.y[1] - 0.387).abs() < 1e-12); // 0.225 + 0.162
 

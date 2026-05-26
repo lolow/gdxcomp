@@ -42,7 +42,7 @@ export interface DisplaySetup {
 
 export interface Trace {
   name: string;
-  x: string[];
+  x: (string | number)[];
   y: (number | null)[];
 }
 
