@@ -31,10 +31,5 @@ export const api = {
   getView(setup: DisplaySetup): Promise<GetViewResult> {
     return invoke("get_view", { setup });
   },
-  saveSetup(path: string, setup: DisplaySetup): Promise<void> {
-    return invoke("save_setup", { path, setup });
-  },
-  loadSetup(path: string): Promise<DisplaySetup> {
-    return invoke("load_setup", { path });
-  },
+
 };

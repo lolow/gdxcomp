@@ -5,7 +5,6 @@ import { DataTable } from "./components/DataTable";
 import { FileBar } from "./components/FileBar";
 import { FilterPanel } from "./components/FilterPanel";
 import { MappingPanel } from "./components/MappingPanel";
-import { SetupToolbar } from "./components/SetupToolbar";
 import { SymbolPicker } from "./components/SymbolPicker";
 import type { DisplaySetup, FileMeta, PlotView, SymbolMeta } from "./types";
 import { defaultSetup } from "./types";
@@ -105,18 +104,6 @@ export function App() {
     });
   }
 
-  async function importSetup(loaded: DisplaySetup) {
-    try {
-      if (loaded.files.length > 0) {
-        await api.openGdx(loaded.files);
-        await syncFromBackend();
-      }
-      setSetup(loaded);
-    } catch (e) {
-      setError(String(e));
-    }
-  }
-
   const fetchKeys = useCallback(
     (dim: number) => (setup ? api.distinctKeys(setup.symbol, dim) : Promise.resolve([])),
     [setup?.symbol],
@@ -133,12 +120,6 @@ export function App() {
           gdxcomp<span className="sub">plot &amp; compare GDX</span>
         </h1>
         <div className="bar-right">
-          <SetupToolbar
-            setup={setup}
-            filePaths={files.map((f) => f.path)}
-            onImport={importSetup}
-            onError={setError}
-          />
           <div className="panel-toggles">
             <button
               className={`ghost icon-btn${leftOpen ? " active" : ""}`}

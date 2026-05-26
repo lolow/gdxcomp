@@ -24,8 +24,6 @@ pub fn run() {
             commands::common_symbols_cmd,
             commands::distinct_keys,
             commands::get_view,
-            commands::save_setup,
-            commands::load_setup,
         ])
         .run(tauri::generate_context!())
         .expect("error while running gdxcomp");
