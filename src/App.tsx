@@ -14,6 +14,7 @@ export function App() {
   const [symbols, setSymbols] = useState<SymbolMeta[]>([]);
   const [setup, setSetup] = useState<DisplaySetup | null>(null);
   const [view, setView] = useState<PlotView | null>(null);
+  const [loading, setLoading] = useState(false);
   const [tab, setTab] = useState<"chart" | "table">("chart");
   const [leftOpen, setLeftOpen] = useState(true);
   const [rightOpen, setRightOpen] = useState(true);
@@ -38,28 +39,33 @@ export function App() {
   useEffect(() => {
     if (!setup?.symbol || files.length === 0) {
       setView(null);
+      setLoading(false);
       return;
     }
     let cancelled = false;
     const timer = setTimeout(() => {
+      setLoading(true);
       api
         .getView(setup)
         .then(({ view: v }) => {
           if (!cancelled) {
             setView(v);
             setError(null);
+            setLoading(false);
           }
         })
         .catch((e) => {
           if (!cancelled) {
             setView(null);
             setError(String(e));
+            setLoading(false);
           }
         });
     }, 400);
     return () => {
       cancelled = true;
       clearTimeout(timer);
+      setLoading(false);
     };
   }, [setup, files]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -161,15 +167,21 @@ export function App() {
           {error && <span className="error-inline">{error}</span>}
         </div>
         <div className="plot-wrap">
-          {view ? (
-            tab === "chart" ? <ChartView view={view} /> : <DataTable view={view} />
-          ) : (
-            <div className="empty">
-              {files.length === 0
-                ? "Add one or more GDX files to begin."
-                : !setup?.symbol
-                  ? "Pick a symbol to plot."
-                  : "Loading…"}
+          {view
+            ? tab === "chart" ? <ChartView view={view} /> : <DataTable view={view} />
+            : !loading && (
+              <div className="empty">
+                {files.length === 0
+                  ? "Add one or more GDX files to begin."
+                  : !setup?.symbol
+                    ? "Pick a symbol to plot."
+                    : null}
+              </div>
+            )
+          }
+          {loading && (
+            <div className="loading-overlay">
+              <div className="spinner" />
             </div>
           )}
         </div>
