@@ -129,21 +129,28 @@ export function App() {
   return (
     <div className="app" style={{ gridTemplateColumns: gridCols }}>
       <header className="bar">
-        <h1>
-          gdxcomp<span className="sub">plot &amp; compare GDX</span>
-        </h1>
-        <SetupToolbar
-          setup={setup}
-          filePaths={files.map((f) => f.path)}
-          onImport={importSetup}
-          onError={setError}
-        />
+        <div className="bar-left">
+          <button className="ghost sidebar-btn" onClick={() => setLeftOpen((o) => !o)} title={leftOpen ? "Collapse files" : "Expand files"}>
+            {leftOpen ? "◀" : "▶"}
+          </button>
+          <h1>
+            gdxcomp<span className="sub">plot &amp; compare GDX</span>
+          </h1>
+        </div>
+        <div className="bar-right">
+          <SetupToolbar
+            setup={setup}
+            filePaths={files.map((f) => f.path)}
+            onImport={importSetup}
+            onError={setError}
+          />
+          <button className="ghost sidebar-btn" onClick={() => setRightOpen((o) => !o)} title={rightOpen ? "Collapse controls" : "Expand controls"}>
+            {rightOpen ? "▶" : "◀"}
+          </button>
+        </div>
       </header>
 
       <div className={`col left${leftOpen ? "" : " collapsed"}`}>
-        <button className="sidebar-toggle" onClick={() => setLeftOpen((o) => !o)} title={leftOpen ? "Collapse" : "Expand"}>
-          {leftOpen ? "‹" : "›"}
-        </button>
         {leftOpen && (
           <>
             <FileBar files={files} onOpen={handleOpen} onOpenFolder={handleOpenFolder} onRemove={handleRemove} />
@@ -179,9 +186,6 @@ export function App() {
       </div>
 
       <div className={`col right${rightOpen ? "" : " collapsed"}`}>
-        <button className="sidebar-toggle sidebar-toggle-right" onClick={() => setRightOpen((o) => !o)} title={rightOpen ? "Collapse" : "Expand"}>
-          {rightOpen ? "›" : "‹"}
-        </button>
         {rightOpen && (
           currentSymbol && setup ? (
             <>

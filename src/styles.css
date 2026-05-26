@@ -38,7 +38,8 @@ header.bar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 14px;
+  padding: 8px 10px;
+  gap: 8px;
 }
 header.bar h1 {
   font-size: 15px;
@@ -49,6 +50,20 @@ header.bar .sub {
   color: var(--muted);
   font-weight: 400;
   margin-left: 8px;
+}
+.bar-left,
+.bar-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.sidebar-btn {
+  font-size: 12px;
+  padding: 3px 7px;
+  color: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  line-height: 1;
 }
 
 .col {
@@ -63,30 +78,7 @@ header.bar .sub {
   grid-area: right;
 }
 .col.collapsed {
-  padding: 6px 0;
   overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-.sidebar-toggle {
-  display: block;
-  width: 100%;
-  border: none;
-  background: none;
-  color: var(--muted);
-  font-size: 16px;
-  line-height: 1;
-  padding: 2px 4px 6px;
-  cursor: pointer;
-  text-align: right;
-}
-.sidebar-toggle:hover {
-  color: var(--accent);
-}
-.sidebar-toggle-right {
-  text-align: left;
 }
 .center {
   grid-area: center;
