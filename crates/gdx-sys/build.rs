@@ -18,16 +18,32 @@ fn main() {
         );
     }
 
+    let target_os = std::env::var("CARGO_CFG_TARGET_OS").unwrap_or_default();
+    let target_arch = std::env::var("CARGO_CFG_TARGET_ARCH").unwrap_or_default();
+
     // Build only the C-API shared library target; skip tests/examples/tools.
     // CMAKE_POLICY_VERSION_MINIMUM is needed so CMake 4.x accepts the bundled
     // zlib's very old `cmake_minimum_required`.
-    let dst = cmake::Config::new(&src)
-        .define("NO_TESTS", "ON")
+    let mut cfg = cmake::Config::new(&src);
+    cfg.define("NO_TESTS", "ON")
         .define("NO_EXAMPLES", "ON")
         .define("NO_TOOLS", "ON")
-        .define("CMAKE_POLICY_VERSION_MINIMUM", "3.5")
-        .build_target("gdxcclib64")
-        .build();
+        .define("CMAKE_POLICY_VERSION_MINIMUM", "3.5");
+
+    // When cross-compiling for Windows from Linux, point cmake at MinGW.
+    if target_os == "windows" && cfg!(target_os = "linux") {
+        let prefix = match target_arch.as_str() {
+            "x86_64" => "x86_64-w64-mingw32",
+            "i686" => "i686-w64-mingw32",
+            _ => "x86_64-w64-mingw32",
+        };
+        cfg.define("CMAKE_SYSTEM_NAME", "Windows")
+            .define("CMAKE_C_COMPILER", format!("{prefix}-gcc"))
+            .define("CMAKE_CXX_COMPILER", format!("{prefix}-g++"))
+            .define("CMAKE_RC_COMPILER", format!("{prefix}-windres"));
+    }
+
+    let dst = cfg.build_target("gdxcclib64").build();
 
     // With `build_target`, artifacts land in the CMake binary dir (`<dst>/build`).
     let libdir = dst.join("build");

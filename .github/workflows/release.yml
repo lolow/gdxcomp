@@ -9,32 +9,19 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  build:
+  # ── Linux (native) + Windows (cross-compiled from Linux) ──────────────────
+  build-linux:
+    name: Linux & Windows binaries
+    runs-on: ubuntu-22.04
     permissions:
       contents: write
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - platform: ubuntu-22.04
-            args: ''
-            rust-targets: ''
-          - platform: windows-latest
-            args: ''
-            rust-targets: ''
-          - platform: macos-latest
-            args: '--target universal-apple-darwin'
-            rust-targets: 'aarch64-apple-darwin,x86_64-apple-darwin'
-
-    runs-on: ${{ matrix.platform }}
 
     steps:
       - uses: actions/checkout@v4
         with:
           submodules: recursive
 
-      - name: Install Linux dependencies
-        if: matrix.platform == 'ubuntu-22.04'
+      - name: Install Linux system dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y cmake build-essential \
@@ -42,9 +29,83 @@ jobs:
             libsoup-3.0-dev librsvg2-dev libgtk-3-dev \
             libayatana-appindicator3-dev
 
+      - name: Install MinGW cross-compiler (for Windows target)
+        run: sudo apt-get install -y gcc-mingw-w64 g++-mingw-w64
+
       - uses: dtolnay/rust-toolchain@stable
         with:
-          targets: ${{ matrix.rust-targets }}
+          targets: x86_64-pc-windows-gnu
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      # ── Linux bundle via tauri-action (creates the GitHub release) ─────────
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: 'superalpha'
+          releaseBody: |
+            **gdxcomp ${{ github.ref_name }}** — plot & compare GAMS GDX files.
+
+            Download the binary for your platform from the assets below.
+          releaseDraft: false
+          prerelease: true
+
+      # ── Windows cross-compiled binary ──────────────────────────────────────
+      - name: Build Windows binary (cross-compile)
+        env:
+          CC_x86_64_pc_windows_gnu: x86_64-w64-mingw32-gcc
+          CXX_x86_64_pc_windows_gnu: x86_64-w64-mingw32-g++
+        run: |
+          cargo build --release \
+            --target x86_64-pc-windows-gnu \
+            --manifest-path src-tauri/Cargo.toml \
+            --features custom-protocol
+
+      - name: Package Windows binary
+        run: |
+          TARGET=src-tauri/target/x86_64-pc-windows-gnu/release
+          mkdir -p windows-dist
+          cp "$TARGET/gdxcomp.exe" windows-dist/
+          # Bundle the GDX DLL if it was copied there by build.rs
+          [ -f "$TARGET/gdxcclib64.dll" ] && cp "$TARGET/gdxcclib64.dll" windows-dist/
+          # Also search the cargo build artefacts for the DLL
+          find "$TARGET/build" -name "gdxcclib64.dll" -exec cp {} windows-dist/ \; 2>/dev/null || true
+          cd windows-dist && zip -r ../gdxcomp-windows-x86_64.zip .
+
+      - name: Upload Windows binary to release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release upload ${{ github.ref_name }} \
+            gdxcomp-windows-x86_64.zip \
+            --repo ${{ github.repository }}
+
+  # ── macOS (native, universal binary) ──────────────────────────────────────
+  build-macos:
+    name: macOS universal binary
+    runs-on: macos-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
 
       - uses: Swatinem/rust-cache@v2
         with:
@@ -62,12 +123,11 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tagName: ${{ github.ref_name }}
-          # Update releaseName for each new release
           releaseName: 'superalpha'
           releaseBody: |
             **gdxcomp ${{ github.ref_name }}** — plot & compare GAMS GDX files.
 
-            Download the installer for your platform from the assets below.
+            Download the binary for your platform from the assets below.
           releaseDraft: false
           prerelease: true
-          args: ${{ matrix.args }}
+          args: --target universal-apple-darwin
