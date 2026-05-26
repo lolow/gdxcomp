@@ -18,6 +18,8 @@ export function App() {
   const [plotSetup, setPlotSetup] = useState<DisplaySetup | null>(null);
   const [view, setView] = useState<PlotView | null>(null);
   const [tab, setTab] = useState<"chart" | "table">("chart");
+  const [leftOpen, setLeftOpen] = useState(true);
+  const [rightOpen, setRightOpen] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const syncFromBackend = useCallback(async () => {
@@ -122,8 +124,10 @@ export function App() {
 
   const canPlot = Boolean(setup?.symbol && files.length > 0);
 
+  const gridCols = `${leftOpen ? "280px" : "32px"} 1fr ${rightOpen ? "300px" : "32px"}`;
+
   return (
-    <div className="app">
+    <div className="app" style={{ gridTemplateColumns: gridCols }}>
       <header className="bar">
         <h1>
           gdxcomp<span className="sub">plot &amp; compare GDX</span>
@@ -136,9 +140,16 @@ export function App() {
         />
       </header>
 
-      <div className="col left">
-        <FileBar files={files} onOpen={handleOpen} onOpenFolder={handleOpenFolder} onRemove={handleRemove} />
-        <SymbolPicker symbols={symbols} selected={setup?.symbol ?? null} onSelect={selectSymbol} />
+      <div className={`col left${leftOpen ? "" : " collapsed"}`}>
+        <button className="sidebar-toggle" onClick={() => setLeftOpen((o) => !o)} title={leftOpen ? "Collapse" : "Expand"}>
+          {leftOpen ? "‹" : "›"}
+        </button>
+        {leftOpen && (
+          <>
+            <FileBar files={files} onOpen={handleOpen} onOpenFolder={handleOpenFolder} onRemove={handleRemove} />
+            <SymbolPicker symbols={symbols} selected={setup?.symbol ?? null} onSelect={selectSymbol} />
+          </>
+        )}
       </div>
 
       <div className="center">
@@ -167,19 +178,24 @@ export function App() {
         </div>
       </div>
 
-      <div className="col right">
-        {currentSymbol && setup ? (
-          <>
-            <MappingPanel symbol={currentSymbol} setup={setup} onChange={patchSetup} />
-            <FilterPanel
-              symbol={currentSymbol}
-              setup={setup}
-              onChange={patchSetup}
-              fetchKeys={fetchKeys}
-            />
-          </>
-        ) : (
-          <div className="empty">Mapping &amp; filters appear here once a symbol is selected.</div>
+      <div className={`col right${rightOpen ? "" : " collapsed"}`}>
+        <button className="sidebar-toggle sidebar-toggle-right" onClick={() => setRightOpen((o) => !o)} title={rightOpen ? "Collapse" : "Expand"}>
+          {rightOpen ? "›" : "‹"}
+        </button>
+        {rightOpen && (
+          currentSymbol && setup ? (
+            <>
+              <MappingPanel symbol={currentSymbol} setup={setup} onChange={patchSetup} />
+              <FilterPanel
+                symbol={currentSymbol}
+                setup={setup}
+                onChange={patchSetup}
+                fetchKeys={fetchKeys}
+              />
+            </>
+          ) : (
+            <div className="empty">Mapping &amp; filters appear here once a symbol is selected.</div>
+          )
         )}
       </div>
     </div>
