@@ -21,14 +21,16 @@ fn common_prefix_chars(labels: &[String]) -> usize {
     if labels.is_empty() {
         return 0;
     }
-    labels[1..].iter().fold(labels[0].chars().count(), |len, s| {
-        labels[0]
-            .chars()
-            .zip(s.chars())
-            .take_while(|(a, b)| a == b)
-            .count()
-            .min(len)
-    })
+    labels[1..]
+        .iter()
+        .fold(labels[0].chars().count(), |len, s| {
+            labels[0]
+                .chars()
+                .zip(s.chars())
+                .take_while(|(a, b)| a == b)
+                .count()
+                .min(len)
+        })
 }
 
 fn common_suffix_chars(labels: &[String]) -> usize {
@@ -103,11 +105,17 @@ impl AppState {
             .into_iter()
             .map(|file| {
                 let scenario = file.label.clone();
-                FileEntry { file, scenario, customized: false }
+                FileEntry {
+                    file,
+                    scenario,
+                    customized: false,
+                }
             })
             .collect();
         recompute_scenarios(&mut entries);
-        AppState { entries: Mutex::new(entries) }
+        AppState {
+            entries: Mutex::new(entries),
+        }
     }
 }
 
@@ -206,7 +214,11 @@ pub fn open_gdx(paths: Vec<String>, state: State<AppState>) -> CmdResult<Vec<Fil
         }
         let file = LoadedFile::open(&path).map_err(|e| format!("{path:?}: {e}"))?;
         let scenario = file.label.clone();
-        entries.push(FileEntry { file, scenario, customized: false });
+        entries.push(FileEntry {
+            file,
+            scenario,
+            customized: false,
+        });
     }
     recompute_scenarios(&mut entries);
     Ok(snapshot(&entries))
@@ -228,10 +240,14 @@ pub fn open_folder(path: String, state: State<AppState>) -> CmdResult<Vec<FileMe
         if entries.iter().any(|e| e.file.path == gdx_path) {
             continue;
         }
-        let file = LoadedFile::open(&gdx_path)
-            .map_err(|e| format!("{}: {e}", gdx_path.display()))?;
+        let file =
+            LoadedFile::open(&gdx_path).map_err(|e| format!("{}: {e}", gdx_path.display()))?;
         let scenario = file.label.clone();
-        entries.push(FileEntry { file, scenario, customized: false });
+        entries.push(FileEntry {
+            file,
+            scenario,
+            customized: false,
+        });
     }
     recompute_scenarios(&mut entries);
     Ok(snapshot(&entries))
@@ -253,17 +269,23 @@ pub fn list_files(state: State<AppState>) -> Vec<FileMeta> {
 }
 
 #[tauri::command]
-pub fn rename_scenario(
-    path: String,
-    scenario: String,
-    state: State<AppState>,
-) -> Vec<FileMeta> {
+pub fn rename_scenario(path: String, scenario: String, state: State<AppState>) -> Vec<FileMeta> {
     let mut entries = state.entries.lock().unwrap();
     let path = PathBuf::from(path);
     if let Some(entry) = entries.iter_mut().find(|e| e.file.path == path) {
         entry.scenario = scenario;
         entry.customized = true;
     }
+    snapshot(&entries)
+}
+
+#[tauri::command]
+pub fn reset_scenarios(state: State<AppState>) -> Vec<FileMeta> {
+    let mut entries = state.entries.lock().unwrap();
+    for entry in entries.iter_mut() {
+        entry.customized = false;
+    }
+    recompute_scenarios(&mut entries);
     snapshot(&entries)
 }
 
@@ -303,5 +325,8 @@ pub fn get_view(setup: DisplaySetup, state: State<AppState>) -> CmdResult<GetVie
         .collect();
     let effective = refine_setup(&files, &setup).map_err(|e| e.to_string())?;
     let view = build_view(&files, &effective).map_err(|e| e.to_string())?;
-    Ok(GetViewResult { view, setup: effective })
+    Ok(GetViewResult {
+        view,
+        setup: effective,
+    })
 }

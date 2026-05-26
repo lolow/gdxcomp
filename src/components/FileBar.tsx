@@ -8,9 +8,10 @@ interface Props {
   onOpenFolder: (path: string) => void;
   onRemove: (path: string) => void;
   onRename: (path: string, scenario: string) => void;
+  onResetScenarios: () => void;
 }
 
-export function FileBar({ files, onOpen, onOpenFolder, onRemove, onRename }: Props) {
+export function FileBar({ files, onOpen, onOpenFolder, onRemove, onRename, onResetScenarios }: Props) {
   const [modalOpen, setModalOpen] = useState(false);
 
   async function pick() {
@@ -56,7 +57,12 @@ export function FileBar({ files, onOpen, onOpenFolder, onRemove, onRename }: Pro
           <div className="modal" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <span>Loaded GDX files</span>
-              <button className="ghost" onClick={() => setModalOpen(false)}>✕</button>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <button className="ghost" style={{ fontSize: 12, color: "var(--muted)" }} onClick={onResetScenarios} title="Reset all scenario names to defaults">
+                  Reset names
+                </button>
+                <button className="ghost" onClick={() => setModalOpen(false)}>✕</button>
+              </div>
             </div>
             <div className="modal-body">
               {files.length === 0 ? (

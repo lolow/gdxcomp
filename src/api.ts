@@ -34,4 +34,7 @@ export const api = {
   renameScenario(path: string, scenario: string): Promise<FileMeta[]> {
     return invoke("rename_scenario", { path, scenario });
   },
+  resetScenarios(): Promise<FileMeta[]> {
+    return invoke("reset_scenarios");
+  },
 };

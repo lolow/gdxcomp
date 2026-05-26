@@ -98,7 +98,12 @@ pub fn build_view(files: &[LoadedFile], setup: &DisplaySetup) -> Result<PlotView
     let x_label = axis_label(&meta, &dim_names, setup.x_dim);
 
     let needs_agg = !setup.dim_agg.is_empty();
-    let agg_method = setup.dim_agg.values().copied().next().unwrap_or(DimAgg::Sum);
+    let agg_method = setup
+        .dim_agg
+        .values()
+        .copied()
+        .next()
+        .unwrap_or(DimAgg::Sum);
 
     let mut x_order: Vec<String> = Vec::new();
     let mut groups: Vec<FileGroup> = Vec::new();
@@ -178,7 +183,11 @@ pub fn build_view(files: &[LoadedFile], setup: &DisplaySetup) -> Result<PlotView
                                 .unwrap_or_default()
                         })
                         .collect();
-                    TableRow { file: t.name.clone(), keys, value: y }
+                    TableRow {
+                        file: t.name.clone(),
+                        keys,
+                        value: y,
+                    }
                 })
             })
             .collect()
@@ -284,6 +293,9 @@ fn group_for(groups: &mut Vec<FileGroup>, file_index: usize) -> &mut FileGroup {
     if let Some(pos) = groups.iter().position(|g| g.file_index == file_index) {
         return &mut groups[pos];
     }
-    groups.push(FileGroup { file_index, cells: Vec::new() });
+    groups.push(FileGroup {
+        file_index,
+        cells: Vec::new(),
+    });
     groups.last_mut().unwrap()
 }
