@@ -97,6 +97,15 @@ export function App() {
     }
   }
 
+  async function handleRename(path: string, scenario: string) {
+    try {
+      const updated = await api.renameScenario(path, scenario);
+      setFiles(updated);
+    } catch (e) {
+      setError(String(e));
+    }
+  }
+
   function selectSymbol(name: string) {
     setSetup(defaultSetup(name));
     setView(null);
@@ -153,7 +162,7 @@ export function App() {
       <div className={`col left${leftOpen ? "" : " collapsed"}`}>
         {leftOpen && (
           <>
-            <FileBar files={files} onOpen={handleOpen} onOpenFolder={handleOpenFolder} onRemove={handleRemove} />
+            <FileBar files={files} onOpen={handleOpen} onOpenFolder={handleOpenFolder} onRemove={handleRemove} onRename={handleRename} />
             <SymbolPicker symbols={symbols} selected={setup?.symbol ?? null} onSelect={selectSymbol} />
           </>
         )}

@@ -279,6 +279,48 @@ label.field > span {
   overflow-y: auto;
 }
 
+.files-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.files-table th {
+  text-align: left;
+  color: var(--muted);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 0 8px 6px;
+  position: static;
+  background: none;
+}
+.files-table td {
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+.files-table tr:last-child td {
+  border-bottom: none;
+}
+.files-table td:first-child {
+  color: var(--muted);
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.files-table input[type="text"] {
+  width: 100%;
+  padding: 3px 6px;
+  font: inherit;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+}
+.files-table input[type="text"]:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
 .symbol-list {
   display: flex;
   flex-direction: column;

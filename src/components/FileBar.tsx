@@ -7,9 +7,10 @@ interface Props {
   onOpen: (paths: string[]) => void;
   onOpenFolder: (path: string) => void;
   onRemove: (path: string) => void;
+  onRename: (path: string, scenario: string) => void;
 }
 
-export function FileBar({ files, onOpen, onOpenFolder, onRemove }: Props) {
+export function FileBar({ files, onOpen, onOpenFolder, onRemove, onRename }: Props) {
   const [modalOpen, setModalOpen] = useState(false);
 
   async function pick() {
@@ -61,18 +62,47 @@ export function FileBar({ files, onOpen, onOpenFolder, onRemove }: Props) {
               {files.length === 0 ? (
                 <div className="empty">No files loaded</div>
               ) : (
-                files.map((f) => (
-                  <div className="file" key={f.path} title={f.path}>
-                    <span className="label">{f.label}</span>
-                    <button
-                      className="ghost"
-                      onClick={() => onRemove(f.path)}
-                      title="Remove"
-                    >
-                      ✕
-                    </button>
-                  </div>
-                ))
+                <table className="files-table">
+                  <thead>
+                    <tr>
+                      <th>GDX file</th>
+                      <th>Scenario</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {files.map((f) => (
+                      <tr key={f.path}>
+                        <td title={f.path}>{f.label}</td>
+                        <td>
+                          <input
+                            type="text"
+                            defaultValue={f.scenario}
+                            key={f.scenario}
+                            onBlur={(e) => {
+                              const val = e.target.value.trim();
+                              if (val && val !== f.scenario) {
+                                onRename(f.path, val);
+                              }
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+                            }}
+                          />
+                        </td>
+                        <td>
+                          <button
+                            className="ghost"
+                            onClick={() => onRemove(f.path)}
+                            title="Remove"
+                          >
+                            ✕
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               )}
             </div>
           </div>

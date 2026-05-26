@@ -13,25 +13,105 @@ use gdxcomp_core::{
 use serde::Serialize;
 use tauri::State;
 
-/// In-memory cache of the currently selected files (metadata only).
-#[derive(Default)]
-pub struct AppState {
-    files: Mutex<Vec<LoadedFile>>,
+// ---------------------------------------------------------------------------
+// Scenario name helpers
+// ---------------------------------------------------------------------------
+
+fn common_prefix_chars(labels: &[String]) -> usize {
+    if labels.is_empty() {
+        return 0;
+    }
+    labels[1..].iter().fold(labels[0].chars().count(), |len, s| {
+        labels[0]
+            .chars()
+            .zip(s.chars())
+            .take_while(|(a, b)| a == b)
+            .count()
+            .min(len)
+    })
 }
 
-impl AppState {
-    pub fn with_files(files: Vec<LoadedFile>) -> Self {
-        AppState {
-            files: Mutex::new(files),
+fn common_suffix_chars(labels: &[String]) -> usize {
+    if labels.is_empty() {
+        return 0;
+    }
+    let first_rev: Vec<char> = labels[0].chars().rev().collect();
+    labels[1..].iter().fold(first_rev.len(), |len, s| {
+        let rev: Vec<char> = s.chars().rev().collect();
+        first_rev
+            .iter()
+            .zip(rev.iter())
+            .take_while(|(a, b)| a == b)
+            .count()
+            .min(len)
+    })
+}
+
+fn distinctive_names(labels: &[String]) -> Vec<String> {
+    if labels.len() <= 1 {
+        return labels.to_vec();
+    }
+    let prefix = common_prefix_chars(labels);
+    let suffix = common_suffix_chars(labels);
+    labels
+        .iter()
+        .map(|label| {
+            let chars: Vec<char> = label.chars().collect();
+            let total = chars.len();
+            let end = total.saturating_sub(suffix);
+            let start = prefix.min(end);
+            let d: String = chars[start..end].iter().collect();
+            let d = d.trim_matches(|c: char| c == '_' || c == '-' || c == '.');
+            if d.is_empty() {
+                label.clone()
+            } else {
+                d.to_string()
+            }
+        })
+        .collect()
+}
+
+fn recompute_scenarios(entries: &mut Vec<FileEntry>) {
+    let labels: Vec<String> = entries.iter().map(|e| e.file.label.clone()).collect();
+    let names = distinctive_names(&labels);
+    for (entry, name) in entries.iter_mut().zip(names.iter()) {
+        if !entry.customized {
+            entry.scenario = name.clone();
         }
     }
 }
 
+// ---------------------------------------------------------------------------
+// App state
+// ---------------------------------------------------------------------------
+
+struct FileEntry {
+    file: LoadedFile,
+    scenario: String,
+    customized: bool,
+}
+
+/// In-memory cache of the currently selected files (metadata only).
+#[derive(Default)]
+pub struct AppState {
+    entries: Mutex<Vec<FileEntry>>,
+}
+
+impl AppState {
+    pub fn with_files(files: Vec<LoadedFile>) -> Self {
+        let mut entries: Vec<FileEntry> = files
+            .into_iter()
+            .map(|file| {
+                let scenario = file.label.clone();
+                FileEntry { file, scenario, customized: false }
+            })
+            .collect();
+        recompute_scenarios(&mut entries);
+        AppState { entries: Mutex::new(entries) }
+    }
+}
+
 /// Parse CLI arguments and return pre-loaded files for the initial app state.
-///
-/// Each positional argument (no leading `-`) is treated as a directory (all
-/// `.gdx` files inside, sorted) or a file (loaded directly; the shell already
-/// expands globs). Unknown paths and load errors are printed to stderr.
 pub fn load_cli_args() -> Vec<LoadedFile> {
     let raw: Vec<PathBuf> = std::env::args()
         .skip(1)
@@ -73,28 +153,32 @@ pub fn load_cli_args() -> Vec<LoadedFile> {
     files
 }
 
+// ---------------------------------------------------------------------------
+// IPC types
+// ---------------------------------------------------------------------------
+
 /// Lightweight per-file summary sent to the UI.
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct FileMeta {
     pub label: String,
+    pub scenario: String,
     pub path: String,
     pub symbols: Vec<SymbolMeta>,
 }
 
-impl From<&LoadedFile> for FileMeta {
-    fn from(f: &LoadedFile) -> Self {
+impl From<&FileEntry> for FileMeta {
+    fn from(e: &FileEntry) -> Self {
         FileMeta {
-            label: f.label.clone(),
-            path: f.path.to_string_lossy().into_owned(),
-            symbols: f.symbols.clone(),
+            label: e.file.label.clone(),
+            scenario: e.scenario.clone(),
+            path: e.file.path.to_string_lossy().into_owned(),
+            symbols: e.file.symbols.clone(),
         }
     }
 }
 
-/// Result of `get_view`: the rendered plot plus the effective setup that was
-/// actually used (may differ from the input if `refine_setup` added defaults).
-/// The UI stores `setup` back so the filter panel reflects auto-selections.
+/// Result of `get_view`.
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct GetViewResult {
@@ -104,28 +188,30 @@ pub struct GetViewResult {
 
 type CmdResult<T> = Result<T, String>;
 
-fn snapshot(files: &[LoadedFile]) -> Vec<FileMeta> {
-    files.iter().map(FileMeta::from).collect()
+fn snapshot(entries: &[FileEntry]) -> Vec<FileMeta> {
+    entries.iter().map(FileMeta::from).collect()
 }
 
-/// Load one or more GDX files (skipping any already loaded) and return the full
-/// current selection.
+// ---------------------------------------------------------------------------
+// Commands
+// ---------------------------------------------------------------------------
+
 #[tauri::command]
 pub fn open_gdx(paths: Vec<String>, state: State<AppState>) -> CmdResult<Vec<FileMeta>> {
-    let mut files = state.files.lock().unwrap();
+    let mut entries = state.entries.lock().unwrap();
     for path in paths {
         let path = PathBuf::from(path);
-        if files.iter().any(|f| f.path == path) {
+        if entries.iter().any(|e| e.file.path == path) {
             continue;
         }
-        let loaded = LoadedFile::open(&path).map_err(|e| format!("{path:?}: {e}"))?;
-        files.push(loaded);
+        let file = LoadedFile::open(&path).map_err(|e| format!("{path:?}: {e}"))?;
+        let scenario = file.label.clone();
+        entries.push(FileEntry { file, scenario, customized: false });
     }
-    Ok(snapshot(&files))
+    recompute_scenarios(&mut entries);
+    Ok(snapshot(&entries))
 }
 
-/// Load all `.gdx` files found directly inside `path` (non-recursive).
-/// Files already in the selection are skipped. Returns the full updated selection.
 #[tauri::command]
 pub fn open_folder(path: String, state: State<AppState>) -> CmdResult<Vec<FileMeta>> {
     let dir = PathBuf::from(&path);
@@ -137,49 +223,63 @@ pub fn open_folder(path: String, state: State<AppState>) -> CmdResult<Vec<FileMe
         .collect();
     gdx_paths.sort();
 
-    let mut files = state.files.lock().unwrap();
+    let mut entries = state.entries.lock().unwrap();
     for gdx_path in gdx_paths {
-        if files.iter().any(|f| f.path == gdx_path) {
+        if entries.iter().any(|e| e.file.path == gdx_path) {
             continue;
         }
-        let loaded =
-            LoadedFile::open(&gdx_path).map_err(|e| format!("{}: {e}", gdx_path.display()))?;
-        files.push(loaded);
+        let file = LoadedFile::open(&gdx_path)
+            .map_err(|e| format!("{}: {e}", gdx_path.display()))?;
+        let scenario = file.label.clone();
+        entries.push(FileEntry { file, scenario, customized: false });
     }
-    Ok(snapshot(&files))
+    recompute_scenarios(&mut entries);
+    Ok(snapshot(&entries))
 }
 
-/// Remove a file from the selection by its path.
 #[tauri::command]
 pub fn remove_gdx(path: String, state: State<AppState>) -> Vec<FileMeta> {
-    let mut files = state.files.lock().unwrap();
+    let mut entries = state.entries.lock().unwrap();
     let path = PathBuf::from(path);
-    files.retain(|f| f.path != path);
-    snapshot(&files)
+    entries.retain(|e| e.file.path != path);
+    recompute_scenarios(&mut entries);
+    snapshot(&entries)
 }
 
-/// The current file selection.
 #[tauri::command]
 pub fn list_files(state: State<AppState>) -> Vec<FileMeta> {
-    let files = state.files.lock().unwrap();
-    snapshot(&files)
+    let entries = state.entries.lock().unwrap();
+    snapshot(&entries)
 }
 
-/// Symbols comparable across every selected file (same name, dim and kind).
+#[tauri::command]
+pub fn rename_scenario(
+    path: String,
+    scenario: String,
+    state: State<AppState>,
+) -> Vec<FileMeta> {
+    let mut entries = state.entries.lock().unwrap();
+    let path = PathBuf::from(path);
+    if let Some(entry) = entries.iter_mut().find(|e| e.file.path == path) {
+        entry.scenario = scenario;
+        entry.customized = true;
+    }
+    snapshot(&entries)
+}
+
 #[tauri::command]
 pub fn common_symbols_cmd(state: State<AppState>) -> Vec<SymbolMeta> {
-    let files = state.files.lock().unwrap();
+    let entries = state.entries.lock().unwrap();
+    let files: Vec<LoadedFile> = entries.iter().map(|e| e.file.clone()).collect();
     common_symbols(&files)
 }
 
-/// Distinct UEL labels in dimension `dim` of `symbol`, unioned across files —
-/// used to populate the filter controls.
 #[tauri::command]
 pub fn distinct_keys(symbol: String, dim: usize, state: State<AppState>) -> Vec<String> {
-    let files = state.files.lock().unwrap();
+    let entries = state.entries.lock().unwrap();
     let mut out: Vec<String> = Vec::new();
-    for f in files.iter() {
-        let keys = f.distinct_keys(&symbol, dim).unwrap_or_default();
+    for e in entries.iter() {
+        let keys = e.file.distinct_keys(&symbol, dim).unwrap_or_default();
         for k in keys {
             if !out.contains(&k) {
                 out.push(k);
@@ -189,18 +289,19 @@ pub fn distinct_keys(symbol: String, dim: usize, state: State<AppState>) -> Vec<
     out
 }
 
-/// Build the chart + table for the given display setup.
-///
-/// Applies `refine_setup` before building so that an unfiltered series dimension
-/// defaults to the first available UEL. Returns the effective setup alongside the
-/// view so the UI can update its filter state.
 #[tauri::command]
 pub fn get_view(setup: DisplaySetup, state: State<AppState>) -> CmdResult<GetViewResult> {
-    let files = state.files.lock().unwrap();
+    let entries = state.entries.lock().unwrap();
+    // Use scenario as the trace label by overriding file.label before the call.
+    let files: Vec<LoadedFile> = entries
+        .iter()
+        .map(|e| {
+            let mut f = e.file.clone();
+            f.label = e.scenario.clone();
+            f
+        })
+        .collect();
     let effective = refine_setup(&files, &setup).map_err(|e| e.to_string())?;
     let view = build_view(&files, &effective).map_err(|e| e.to_string())?;
-    Ok(GetViewResult {
-        view,
-        setup: effective,
-    })
+    Ok(GetViewResult { view, setup: effective })
 }

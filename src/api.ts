@@ -31,5 +31,7 @@ export const api = {
   getView(setup: DisplaySetup): Promise<GetViewResult> {
     return invoke("get_view", { setup });
   },
-
+  renameScenario(path: string, scenario: string): Promise<FileMeta[]> {
+    return invoke("rename_scenario", { path, scenario });
+  },
 };

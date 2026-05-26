@@ -22,6 +22,7 @@ export interface SymbolMeta {
 
 export interface FileMeta {
   label: string;
+  scenario: string;
   path: string;
   symbols: SymbolMeta[];
 }
