@@ -605,6 +605,18 @@ td.num {
   position: relative;
   height: 24px;
 }
+/* Base gray track rendered by container so it never covers thumbs */
+.year-range-track::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  height: 4px;
+  background: var(--border);
+  border-radius: 2px;
+}
 .year-range-fill {
   position: absolute;
   top: 50%;
@@ -613,6 +625,7 @@ td.num {
   background: var(--accent);
   border-radius: 2px;
   pointer-events: none;
+  z-index: 1;
 }
 .year-range-track input[type="range"] {
   position: absolute;
@@ -628,11 +641,12 @@ td.num {
   outline: none;
   margin: 0;
   padding: 0;
+  z-index: 2;
 }
+/* Tracks are transparent — the ::before and fill div own the visuals */
 .year-range-track input[type="range"]::-webkit-slider-runnable-track {
   height: 4px;
-  background: var(--border);
-  border-radius: 2px;
+  background: transparent;
 }
 .year-range-track input[type="range"]::-webkit-slider-thumb {
   -webkit-appearance: none;
@@ -649,8 +663,7 @@ td.num {
 }
 .year-range-track input[type="range"]::-moz-range-track {
   height: 4px;
-  background: var(--border);
-  border-radius: 2px;
+  background: transparent;
 }
 .year-range-track input[type="range"]::-moz-range-thumb {
   pointer-events: all;
