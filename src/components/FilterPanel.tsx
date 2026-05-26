@@ -18,7 +18,7 @@ export function FilterPanel({ symbol, setup, onChange, fetchKeys }: Props) {
     Promise.all(dims.map((d) => fetchKeys(d))).then((lists) => {
       if (cancelled) return;
       const map: Record<number, string[]> = {};
-      dims.forEach((d, i) => (map[d] = lists[i]));
+      dims.forEach((d, i) => (map[d] = [...lists[i]].sort((a, b) => a.localeCompare(b))));
       setKeysByDim(map);
     });
     return () => {
