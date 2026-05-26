@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { open } from "@tauri-apps/plugin-dialog";
 import type { FileMeta } from "../types";
 
@@ -9,6 +10,8 @@ interface Props {
 }
 
 export function FileBar({ files, onOpen, onOpenFolder, onRemove }: Props) {
+  const [modalOpen, setModalOpen] = useState(false);
+
   async function pick() {
     const selected = await open({
       multiple: true,
@@ -26,6 +29,11 @@ export function FileBar({ files, onOpen, onOpenFolder, onRemove }: Props) {
     onOpenFolder(path);
   }
 
+  const label =
+    files.length === 0
+      ? "No files loaded"
+      : `${files.length} GDX file${files.length > 1 ? "s" : ""} loaded`;
+
   return (
     <div className="section">
       <h2>Files</h2>
@@ -37,15 +45,39 @@ export function FileBar({ files, onOpen, onOpenFolder, onRemove }: Props) {
           📁
         </button>
       </div>
-      {files.length === 0 && <div className="empty">No files loaded</div>}
-      {files.map((f) => (
-        <div className="file" key={f.path} title={f.path}>
-          <span className="label">{f.label}</span>
-          <button className="ghost" onClick={() => onRemove(f.path)} title="Remove">
-            ✕
-          </button>
+      <button className="files-count" onClick={() => setModalOpen(true)}>
+        <span>{label}</span>
+        <span className="files-count-arrow">›</span>
+      </button>
+
+      {modalOpen && (
+        <div className="modal-overlay" onClick={() => setModalOpen(false)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <span>Loaded GDX files</span>
+              <button className="ghost" onClick={() => setModalOpen(false)}>✕</button>
+            </div>
+            <div className="modal-body">
+              {files.length === 0 ? (
+                <div className="empty">No files loaded</div>
+              ) : (
+                files.map((f) => (
+                  <div className="file" key={f.path} title={f.path}>
+                    <span className="label">{f.label}</span>
+                    <button
+                      className="ghost"
+                      onClick={() => onRemove(f.path)}
+                      title="Remove"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
         </div>
-      ))}
+      )}
     </div>
   );
 }
