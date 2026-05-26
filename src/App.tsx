@@ -16,6 +16,7 @@ export function App() {
   const [view, setView] = useState<PlotView | null>(null);
   const [loading, setLoading] = useState(false);
   const [tab, setTab] = useState<"chart" | "table">("chart");
+  const [showZero, setShowZero] = useState(false);
   const [leftOpen, setLeftOpen] = useState(true);
   const [rightOpen, setRightOpen] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -164,11 +165,21 @@ export function App() {
             <button className={tab === "chart" ? "on" : ""} onClick={() => setTab("chart")}>Chart</button>
             <button className={tab === "table" ? "on" : ""} onClick={() => setTab("table")}>Table</button>
           </div>
+          {tab === "chart" && (
+            <label className="toggle-switch">
+              <input
+                type="checkbox"
+                checked={showZero}
+                onChange={(e) => setShowZero(e.target.checked)}
+              />
+              Zero baseline
+            </label>
+          )}
           {error && <span className="error-inline">{error}</span>}
         </div>
         <div className="plot-wrap">
           {view
-            ? tab === "chart" ? <ChartView view={view} /> : <DataTable view={view} />
+            ? tab === "chart" ? <ChartView view={view} showZero={showZero} /> : <DataTable view={view} />
             : !loading && (
               <div className="empty">
                 {files.length === 0
