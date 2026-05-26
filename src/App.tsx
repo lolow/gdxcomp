@@ -13,8 +13,6 @@ export function App() {
   const [files, setFiles] = useState<FileMeta[]>([]);
   const [symbols, setSymbols] = useState<SymbolMeta[]>([]);
   const [setup, setSetup] = useState<DisplaySetup | null>(null);
-  // plotSetup is the setup actually submitted to getView; null = nothing plotted yet.
-  const [plotSetup, setPlotSetup] = useState<DisplaySetup | null>(null);
   const [view, setView] = useState<PlotView | null>(null);
   const [tab, setTab] = useState<"chart" | "table">("chart");
   const [leftOpen, setLeftOpen] = useState(true);
@@ -36,34 +34,34 @@ export function App() {
     [symbols, setup],
   );
 
-  // Fire getView only when the user explicitly clicks Plot.
+  // Auto-refresh chart 400 ms after any setup or file change.
   useEffect(() => {
-    if (!plotSetup || !plotSetup.symbol || files.length === 0) {
+    if (!setup?.symbol || files.length === 0) {
       setView(null);
       return;
     }
     let cancelled = false;
-    api
-      .getView(plotSetup)
-      .then(({ view: v }) => {
-        if (cancelled) return;
-        setView(v);
-        setError(null);
-      })
-      .catch((e) => {
-        if (!cancelled) {
-          setView(null);
-          setError(String(e));
-        }
-      });
+    const timer = setTimeout(() => {
+      api
+        .getView(setup)
+        .then(({ view: v }) => {
+          if (!cancelled) {
+            setView(v);
+            setError(null);
+          }
+        })
+        .catch((e) => {
+          if (!cancelled) {
+            setView(null);
+            setError(String(e));
+          }
+        });
+    }, 400);
     return () => {
       cancelled = true;
+      clearTimeout(timer);
     };
-  }, [plotSetup]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  function handlePlot() {
-    if (setup) setPlotSetup({ ...setup });
-  }
+  }, [setup, files]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function handleOpen(paths: string[]) {
     try {
@@ -108,8 +106,6 @@ export function App() {
     (dim: number) => (setup ? api.distinctKeys(setup.symbol, dim) : Promise.resolve([])),
     [setup?.symbol],
   );
-
-  const canPlot = Boolean(setup?.symbol && files.length > 0);
 
   const gridCols = `${leftOpen ? "280px" : "0px"} 1fr ${rightOpen ? "300px" : "0px"}`;
 
@@ -158,9 +154,6 @@ export function App() {
 
       <div className="center">
         <div className="plot-toolbar">
-          <button className="primary" disabled={!canPlot} onClick={handlePlot}>
-            Update
-          </button>
           <div className="toggle-group">
             <button className={tab === "chart" ? "on" : ""} onClick={() => setTab("chart")}>Chart</button>
             <button className={tab === "table" ? "on" : ""} onClick={() => setTab("table")}>Table</button>
@@ -176,7 +169,7 @@ export function App() {
                 ? "Add one or more GDX files to begin."
                 : !setup?.symbol
                   ? "Pick a symbol to plot."
-                  : "Click Plot to render the chart."}
+                  : "Loading…"}
             </div>
           )}
         </div>
