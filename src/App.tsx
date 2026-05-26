@@ -172,7 +172,7 @@ export function App() {
                 checked={showZero}
                 onChange={(e) => setShowZero(e.target.checked)}
               />
-              Zero baseline
+              0-intercept
             </label>
           )}
           {error && <span className="error-inline">{error}</span>}
