@@ -6,8 +6,15 @@ import { FileBar } from "./components/FileBar";
 import { FilterPanel } from "./components/FilterPanel";
 import { MappingPanel } from "./components/MappingPanel";
 import { SymbolPicker } from "./components/SymbolPicker";
-import type { DisplaySetup, FileMeta, PlotView, SymbolMeta } from "./types";
+import type { AppMode, DisplaySetup, FileMeta, PlotView, SymbolMeta } from "./types";
 import { defaultSetup } from "./types";
+
+const WITCH_SYMBOLS = new Set(["Q", "Q_EMI", "Q_FUEL", "I", "I_EN"]);
+
+function detectMode(syms: SymbolMeta[]): AppMode {
+  if (WITCH_SYMBOLS.size > 0 && syms.some((s) => WITCH_SYMBOLS.has(s.name))) return "witch";
+  return "gdx";
+}
 
 export function App() {
   const [files, setFiles] = useState<FileMeta[]>([]);
@@ -20,11 +27,15 @@ export function App() {
   const [leftOpen, setLeftOpen] = useState(true);
   const [rightOpen, setRightOpen] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [mode, setMode] = useState<AppMode>("gdx");
 
   const syncFromBackend = useCallback(async () => {
     const f = await api.listFiles();
     setFiles(f);
-    setSymbols((await api.commonSymbols()).filter((s) => s.kind !== "set"));
+    const syms = (await api.commonSymbols()).filter((s) => s.kind !== "set");
+    setSymbols(syms);
+    const detected = detectMode(syms);
+    if (detected === "witch") setMode("witch");
   }, []);
 
   useEffect(() => {
@@ -162,6 +173,10 @@ export function App() {
           gdxcomp<span className="sub">plot &amp; compare GDX</span>
         </h1>
         <div className="bar-right">
+          <div className="toggle-group mode-toggle">
+            <button className={mode === "gdx" ? "on" : ""} onClick={() => setMode("gdx")}>GDX</button>
+            <button className={mode === "witch" ? "on" : ""} onClick={() => setMode("witch")}>WITCH</button>
+          </div>
           <div className="panel-toggles">
             <button
               className={`ghost icon-btn${leftOpen ? " active" : ""}`}

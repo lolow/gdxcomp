@@ -1,6 +1,8 @@
 // TypeScript mirrors of the Rust types exchanged with the backend.
 // Field names match the serde representation (camelCase; lowercase enums).
 
+export type AppMode = "gdx" | "witch";
+
 export type SymbolKind =
   | "set"
   | "parameter"

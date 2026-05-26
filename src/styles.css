@@ -460,6 +460,10 @@ details.symbol-group:not([open]) .symbol-group-header::before {
   border-radius: 0;
   flex: 1;
 }
+.mode-toggle button {
+  flex: none;
+  padding: 4px 10px;
+}
 .toggle-group button:first-child {
   border-radius: 6px 0 0 6px;
 }
