@@ -605,6 +605,15 @@ td.num {
   position: relative;
   height: 24px;
 }
+.year-range-fill {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  height: 4px;
+  background: var(--accent);
+  border-radius: 2px;
+  pointer-events: none;
+}
 .year-range-track input[type="range"] {
   position: absolute;
   left: 0;

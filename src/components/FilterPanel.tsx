@@ -44,6 +44,8 @@ function YearRangeFilter({ uels, filter, onFilter }: {
     onFilter(selected.length === sorted.length ? [] : selected);
   }
 
+  const pct = (i: number) => `${(i / (sorted.length - 1)) * 100}%`;
+
   return (
     <div className="year-range">
       <div className="year-range-values">
@@ -52,6 +54,10 @@ function YearRangeFilter({ uels, filter, onFilter }: {
         <span>{sorted[maxIdx]?.year}</span>
       </div>
       <div className="year-range-track">
+        <div
+          className="year-range-fill"
+          style={{ left: pct(minIdx), width: `calc(${pct(maxIdx)} - ${pct(minIdx)})` }}
+        />
         <input
           type="range"
           min={0}
