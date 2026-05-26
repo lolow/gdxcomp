@@ -51,19 +51,27 @@ header.bar .sub {
   font-weight: 400;
   margin-left: 8px;
 }
-.bar-left,
 .bar-right {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
 }
-.sidebar-btn {
-  font-size: 12px;
-  padding: 3px 7px;
+.panel-toggles {
+  display: flex;
+  gap: 2px;
+  border-left: 1px solid var(--border);
+  padding-left: 8px;
+  margin-left: 2px;
+}
+.icon-btn {
+  padding: 3px;
   color: var(--muted);
-  border: 1px solid var(--border);
   border-radius: 4px;
-  line-height: 1;
+  line-height: 0;
+}
+.icon-btn:hover,
+.icon-btn.active {
+  color: var(--ink);
 }
 
 .col {

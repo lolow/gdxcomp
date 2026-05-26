@@ -129,14 +129,9 @@ export function App() {
   return (
     <div className="app" style={{ gridTemplateColumns: gridCols }}>
       <header className="bar">
-        <div className="bar-left">
-          <button className="ghost sidebar-btn" onClick={() => setLeftOpen((o) => !o)} title={leftOpen ? "Collapse files" : "Expand files"}>
-            {leftOpen ? "◀" : "▶"}
-          </button>
-          <h1>
-            gdxcomp<span className="sub">plot &amp; compare GDX</span>
-          </h1>
-        </div>
+        <h1>
+          gdxcomp<span className="sub">plot &amp; compare GDX</span>
+        </h1>
         <div className="bar-right">
           <SetupToolbar
             setup={setup}
@@ -144,9 +139,30 @@ export function App() {
             onImport={importSetup}
             onError={setError}
           />
-          <button className="ghost sidebar-btn" onClick={() => setRightOpen((o) => !o)} title={rightOpen ? "Collapse controls" : "Expand controls"}>
-            {rightOpen ? "▶" : "◀"}
-          </button>
+          <div className="panel-toggles">
+            <button
+              className={`ghost icon-btn${leftOpen ? " active" : ""}`}
+              onClick={() => setLeftOpen((o) => !o)}
+              title={leftOpen ? "Collapse files panel" : "Expand files panel"}
+            >
+              <svg width="18" height="16" viewBox="0 0 18 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <rect x="1" y="1" width="16" height="14" rx="2.5" stroke="currentColor" strokeWidth="1.5"/>
+                <rect x="1" y="1" width="5" height="14" rx="2" fill="currentColor" fillOpacity={leftOpen ? 0.45 : 0}/>
+                <line x1="6" y1="1" x2="6" y2="15" stroke="currentColor" strokeWidth="1"/>
+              </svg>
+            </button>
+            <button
+              className={`ghost icon-btn${rightOpen ? " active" : ""}`}
+              onClick={() => setRightOpen((o) => !o)}
+              title={rightOpen ? "Collapse controls panel" : "Expand controls panel"}
+            >
+              <svg width="18" height="16" viewBox="0 0 18 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <rect x="1" y="1" width="16" height="14" rx="2.5" stroke="currentColor" strokeWidth="1.5"/>
+                <rect x="12" y="1" width="5" height="14" rx="2" fill="currentColor" fillOpacity={rightOpen ? 0.45 : 0}/>
+                <line x1="12" y1="1" x2="12" y2="15" stroke="currentColor" strokeWidth="1"/>
+              </svg>
+            </button>
+          </div>
         </div>
       </header>
 
