@@ -124,7 +124,7 @@ export function App() {
 
   const canPlot = Boolean(setup?.symbol && files.length > 0);
 
-  const gridCols = `${leftOpen ? "280px" : "32px"} 1fr ${rightOpen ? "300px" : "32px"}`;
+  const gridCols = `${leftOpen ? "280px" : "0px"} 1fr ${rightOpen ? "300px" : "0px"}`;
 
   return (
     <div className="app" style={{ gridTemplateColumns: gridCols }}>

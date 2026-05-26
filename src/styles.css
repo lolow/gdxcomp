@@ -86,7 +86,7 @@ header.bar .sub {
   grid-area: right;
 }
 .col.collapsed {
-  overflow: hidden;
+  display: none;
 }
 .center {
   grid-area: center;
