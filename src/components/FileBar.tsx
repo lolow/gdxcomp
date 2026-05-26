@@ -47,7 +47,7 @@ export function FileBar({ files, onOpen, onOpenFolder, onRemove }: Props) {
       </div>
       <button className="files-count" onClick={() => setModalOpen(true)}>
         <span>{label}</span>
-        <span className="files-count-arrow">›</span>
+        <span className="files-count-arrow">…</span>
       </button>
 
       {modalOpen && (
