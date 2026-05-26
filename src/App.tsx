@@ -128,12 +128,12 @@ export function App() {
 
   function selectSymbol(name: string) {
     const sym = symbols.find((s) => s.name === name);
-    let setup = defaultSetup(name);
+    let s = defaultSetup(name, mode);
     if (mode === "witch" && sym) {
       const tIdx = sym.domains.indexOf("t");
-      if (tIdx >= 0) setup = { ...setup, xDim: tIdx };
+      if (tIdx >= 0) s = { ...s, xDim: tIdx };
     }
-    setSetup(setup);
+    setSetup(s);
     setView(null);
   }
 
@@ -180,8 +180,8 @@ export function App() {
         </h1>
         <div className="bar-right">
           <div className="toggle-group mode-toggle">
-            <button className={mode === "gdx" ? "on" : ""} onClick={() => setMode("gdx")}>GDX</button>
-            <button className={mode === "witch" ? "on" : ""} onClick={() => setMode("witch")}>WITCH</button>
+            <button className={mode === "gdx" ? "on" : ""} onClick={() => { setMode("gdx"); patchSetup({ mode: "gdx" }); }}>GDX</button>
+            <button className={mode === "witch" ? "on" : ""} onClick={() => { setMode("witch"); patchSetup({ mode: "witch" }); }}>WITCH</button>
           </div>
           <div className="panel-toggles">
             <button

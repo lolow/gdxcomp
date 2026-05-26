@@ -38,6 +38,7 @@ export interface DisplaySetup {
   filters: Record<string, string[]>;
   /** per-dim aggregation for dims not filtered to a specific value */
   dimAgg: Record<string, DimAgg>;
+  mode: AppMode;
 }
 
 export interface Trace {
@@ -71,7 +72,7 @@ export interface GetViewResult {
 }
 
 /** A minimal setup for a symbol: x = dim 0, no aggregation override. */
-export function defaultSetup(symbol: string): DisplaySetup {
+export function defaultSetup(symbol: string, mode: AppMode = "gdx"): DisplaySetup {
   return {
     files: [],
     symbol,
@@ -79,6 +80,7 @@ export function defaultSetup(symbol: string): DisplaySetup {
     xDim: 0,
     filters: {},
     dimAgg: {},
+    mode,
   };
 }
 

@@ -2,7 +2,7 @@ use serde::Serialize;
 
 use crate::error::{CoreError, Result};
 use crate::model::{LoadedFile, Rec, SymbolKind, SymbolMeta};
-use crate::setup::{DimAgg, DisplaySetup, Field};
+use crate::setup::{AppMode, DimAgg, DisplaySetup, Field};
 use crate::witch::YearMapper;
 
 const MAX_TRACES: usize = 30;
@@ -127,11 +127,15 @@ pub fn build_view(files: &[LoadedFile], setup: &DisplaySetup) -> Result<PlotView
 
     let dim_names = dimension_names(&meta);
 
-    // When the x-axis dimension is named "t", map UEL labels to calendar years.
-    let year_mapper: Option<YearMapper> = dim_names
-        .get(setup.x_dim)
-        .filter(|n| n.as_str() == "t")
-        .map(|_| YearMapper::new(files));
+    // In WITCH mode, map the "t" x-axis dimension to calendar years.
+    let year_mapper: Option<YearMapper> = if setup.mode == AppMode::Witch {
+        dim_names
+            .get(setup.x_dim)
+            .filter(|n| n.as_str() == "t")
+            .map(|_| YearMapper::new(files))
+    } else {
+        None
+    };
 
     let x_label = if year_mapper.is_some() {
         "year".to_string()

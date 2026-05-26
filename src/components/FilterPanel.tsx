@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { AppMode, DimAgg, DisplaySetup, SymbolMeta } from "../types";
 import { dimLabel } from "./MappingPanel";
 
@@ -8,6 +8,67 @@ interface Props {
   mode: AppMode;
   onChange: (patch: Partial<DisplaySetup>) => void;
   fetchKeys: (dim: number) => Promise<string[]>;
+}
+
+function uelToYear(uel: string): number | null {
+  const digits = uel.replace(/^\D*/, "");
+  const n = parseFloat(digits);
+  if (isNaN(n)) return null;
+  return 2000 + 5 * n;
+}
+
+interface YearEntry { uel: string; year: number; }
+
+function YearRangeFilter({ uels, filter, onFilter }: {
+  uels: string[];
+  filter: string[];
+  onFilter: (uels: string[]) => void;
+}) {
+  const sorted: YearEntry[] = useMemo(() =>
+    uels
+      .map((uel) => ({ uel, year: uelToYear(uel) ?? 0 }))
+      .filter((e) => e.year > 0)
+      .sort((a, b) => a.year - b.year),
+    [uels],
+  );
+
+  if (sorted.length === 0) return <div className="empty">no values</div>;
+
+  const filterSet = new Set(filter.length > 0 ? filter : sorted.map((e) => e.uel));
+  const inRange = sorted.filter((e) => filterSet.has(e.uel));
+  const minIdx = inRange.length > 0 ? sorted.findIndex((e) => e.uel === inRange[0].uel) : 0;
+  const maxIdx = inRange.length > 0 ? sorted.findIndex((e) => e.uel === inRange[inRange.length - 1].uel) : sorted.length - 1;
+
+  function setRange(lo: number, hi: number) {
+    const selected = sorted.slice(lo, hi + 1).map((e) => e.uel);
+    onFilter(selected.length === sorted.length ? [] : selected);
+  }
+
+  return (
+    <div className="year-range">
+      <div className="year-range-values">
+        <span>{sorted[minIdx]?.year}</span>
+        <span>–</span>
+        <span>{sorted[maxIdx]?.year}</span>
+      </div>
+      <div className="year-range-track">
+        <input
+          type="range"
+          min={0}
+          max={sorted.length - 1}
+          value={minIdx}
+          onChange={(e) => setRange(Math.min(Number(e.target.value), maxIdx), maxIdx)}
+        />
+        <input
+          type="range"
+          min={0}
+          max={sorted.length - 1}
+          value={maxIdx}
+          onChange={(e) => setRange(minIdx, Math.max(Number(e.target.value), minIdx))}
+        />
+      </div>
+    </div>
+  );
 }
 
 export function FilterPanel({ symbol, setup, mode, onChange, fetchKeys }: Props) {
@@ -79,6 +140,10 @@ export function FilterPanel({ symbol, setup, mode, onChange, fetchKeys }: Props)
     onChange({ filters: nextFilters, dimAgg: nextDimAgg });
   }
 
+  function isYearDim(dim: number): boolean {
+    return mode === "witch" && symbol.domains[dim] === "t";
+  }
+
   return (
     <div className="section">
       <h2>Filters</h2>
@@ -89,25 +154,33 @@ export function FilterPanel({ symbol, setup, mode, onChange, fetchKeys }: Props)
           <div key={dim} className="field">
             <span style={{ color: "var(--muted)", fontSize: 12 }}>{dimLabel(symbol, dim, mode)}</span>
             {isXDim ? (
-              <>
-                <div className="row-gap" style={{ justifyContent: "flex-end" }}>
-                  <button className="ghost" onClick={() => setMany(dim, [...keys])}>all</button>
-                  <button className="ghost" onClick={() => setMany(dim, keys.length ? [keys[0]] : [])}>first</button>
-                </div>
-                <div className="checks">
-                  {keys.length === 0 && <div className="empty">no values</div>}
-                  {keys.map((k) => (
-                    <label key={k}>
-                      <input
-                        type="checkbox"
-                        checked={isChecked(dim, k)}
-                        onChange={(e) => toggle(dim, k, e.target.checked)}
-                      />
-                      {k}
-                    </label>
-                  ))}
-                </div>
-              </>
+              isYearDim(dim) ? (
+                <YearRangeFilter
+                  uels={keys}
+                  filter={selectedMany(dim)}
+                  onFilter={(uels) => setMany(dim, uels)}
+                />
+              ) : (
+                <>
+                  <div className="row-gap" style={{ justifyContent: "flex-end" }}>
+                    <button className="ghost" onClick={() => setMany(dim, [...keys])}>all</button>
+                    <button className="ghost" onClick={() => setMany(dim, keys.length ? [keys[0]] : [])}>first</button>
+                  </div>
+                  <div className="checks">
+                    {keys.length === 0 && <div className="empty">no values</div>}
+                    {keys.map((k) => (
+                      <label key={k}>
+                        <input
+                          type="checkbox"
+                          checked={isChecked(dim, k)}
+                          onChange={(e) => toggle(dim, k, e.target.checked)}
+                        />
+                        {k}
+                      </label>
+                    ))}
+                  </div>
+                </>
+              )
             ) : (
               <select value={nonXValue(dim)} onChange={(e) => setNonX(dim, e.target.value)}>
                 <option value="__agg:sum">— sum —</option>
