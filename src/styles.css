@@ -603,19 +603,22 @@ td.num {
 }
 .year-range-track {
   position: relative;
-  height: 28px;
+  height: 24px;
 }
 .year-range-track input[type="range"] {
   position: absolute;
+  left: 0;
   width: 100%;
+  top: 50%;
+  transform: translateY(-50%);
+  height: 20px;
   pointer-events: none;
   -webkit-appearance: none;
   appearance: none;
   background: transparent;
   outline: none;
-  top: 6px;
-  height: 16px;
   margin: 0;
+  padding: 0;
 }
 .year-range-track input[type="range"]::-webkit-slider-runnable-track {
   height: 4px;
