@@ -84,6 +84,11 @@ export function defaultSetup(symbol: string, mode: AppMode = "gdx"): DisplaySetu
   };
 }
 
+export interface Session {
+  files: string[];
+  lastSymbol: string | null;
+}
+
 export function fieldsForKind(kind: SymbolKind): Field[] {
   return kind === "variable" || kind === "equation"
     ? ["level", "marginal", "lower", "upper", "scale"]

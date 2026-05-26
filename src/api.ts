@@ -6,6 +6,7 @@ import type {
   DisplaySetup,
   FileMeta,
   GetViewResult,
+  Session,
   SymbolMeta,
 } from "./types";
 
@@ -36,5 +37,11 @@ export const api = {
   },
   resetScenarios(): Promise<FileMeta[]> {
     return invoke("reset_scenarios");
+  },
+  saveSession(session: Session): Promise<void> {
+    return invoke("save_session", { session });
+  },
+  loadSession(): Promise<Session | null> {
+    return invoke("load_session");
   },
 };

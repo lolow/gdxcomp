@@ -4,14 +4,15 @@
 //! Files are cached in app state (metadata only); records are read lazily per
 //! `get_view` call and not held in memory between calls.
 
+use std::fs;
 use std::path::PathBuf;
 use std::sync::Mutex;
 
 use gdxcomp_core::{
     build_view, common_symbols, refine_setup, DisplaySetup, LoadedFile, PlotView, SymbolMeta,
 };
-use serde::Serialize;
-use tauri::State;
+use serde::{Deserialize, Serialize};
+use tauri::{AppHandle, Manager, State};
 
 // ---------------------------------------------------------------------------
 // Scenario name helpers
@@ -329,4 +330,38 @@ pub fn get_view(setup: DisplaySetup, state: State<AppState>) -> CmdResult<GetVie
         view,
         setup: effective,
     })
+}
+
+// ---------------------------------------------------------------------------
+// Session persistence
+// ---------------------------------------------------------------------------
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Session {
+    pub files: Vec<String>,
+    pub last_symbol: Option<String>,
+}
+
+fn session_path(app: &AppHandle) -> Option<PathBuf> {
+    app.path().app_data_dir().ok().map(|d| d.join("session.json"))
+}
+
+#[tauri::command]
+pub fn save_session(session: Session, app: AppHandle) {
+    if let Some(path) = session_path(&app) {
+        if let Some(parent) = path.parent() {
+            let _ = fs::create_dir_all(parent);
+        }
+        if let Ok(json) = serde_json::to_string(&session) {
+            let _ = fs::write(path, json);
+        }
+    }
+}
+
+#[tauri::command]
+pub fn load_session(app: AppHandle) -> Option<Session> {
+    let path = session_path(&app)?;
+    let data = fs::read_to_string(path).ok()?;
+    serde_json::from_str(&data).ok()
 }

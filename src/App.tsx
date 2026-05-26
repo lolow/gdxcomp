@@ -6,7 +6,7 @@ import { FileBar } from "./components/FileBar";
 import { FilterPanel } from "./components/FilterPanel";
 import { MappingPanel } from "./components/MappingPanel";
 import { SymbolPicker } from "./components/SymbolPicker";
-import type { AppMode, DisplaySetup, FileMeta, PlotView, SymbolMeta } from "./types";
+import type { AppMode, DisplaySetup, FileMeta, PlotView, Session, SymbolMeta } from "./types";
 import { defaultSetup } from "./types";
 
 const WITCH_SYMBOLS = new Set(["Q", "Q_EMI", "Q_FUEL", "I", "I_EN"]);
@@ -28,6 +28,7 @@ export function App() {
   const [rightOpen, setRightOpen] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [mode, setMode] = useState<AppMode>("gdx");
+  const [savedSession, setSavedSession] = useState<Session | null>(null);
 
   const syncFromBackend = useCallback(async () => {
     const f = await api.listFiles();
@@ -38,9 +39,17 @@ export function App() {
     if (detected === "witch") setMode("witch");
   }, []);
 
+  // On mount: load persisted session and offer to restore if no files are open.
   useEffect(() => {
+    api.loadSession().then((s) => { if (s && s.files.length > 0) setSavedSession(s); }).catch(() => {});
     syncFromBackend().catch((e) => setError(String(e)));
   }, [syncFromBackend]);
+
+  // Persist session whenever the file list or selected symbol changes.
+  useEffect(() => {
+    if (files.length === 0) return;
+    api.saveSession({ files: files.map((f) => f.path), lastSymbol: setup?.symbol ?? null }).catch(() => {});
+  }, [files, setup?.symbol]);
 
   const currentSymbol = useMemo(
     () => (setup ? symbols.find((s) => s.name === setup.symbol) ?? null : null),
@@ -125,6 +134,25 @@ export function App() {
       setError(String(e));
     }
   }
+
+  async function restoreSession() {
+    if (!savedSession) return;
+    setSavedSession(null);
+    try {
+      await api.openGdx(savedSession.files);
+      await syncFromBackend();
+      if (savedSession.lastSymbol) selectSymbol(savedSession.lastSymbol);
+    } catch (e) {
+      setError(String(e));
+    }
+  }
+
+  // Symbols sorted so the last-used one (from session) appears first.
+  const sortedSymbols = useMemo(() => {
+    if (!savedSession?.lastSymbol || setup) return symbols;
+    const last = savedSession.lastSymbol;
+    return [...symbols].sort((a, b) => (a.name === last ? -1 : b.name === last ? 1 : 0));
+  }, [symbols, savedSession, setup]);
 
   function selectSymbol(name: string) {
     const sym = symbols.find((s) => s.name === name);
@@ -214,7 +242,7 @@ export function App() {
         {leftOpen && (
           <>
             <FileBar files={files} onOpen={handleOpen} onOpenFolder={handleOpenFolder} onRemove={handleRemove} onRename={handleRename} onResetScenarios={handleResetScenarios} />
-            <SymbolPicker symbols={symbols} selected={setup?.symbol ?? null} onSelect={selectSymbol} />
+            <SymbolPicker symbols={sortedSymbols} selected={setup?.symbol ?? null} onSelect={selectSymbol} />
           </>
         )}
       </div>
@@ -250,13 +278,24 @@ export function App() {
             )}
           </div>
         )}
+        {savedSession && files.length === 0 && (
+          <div className="session-banner">
+            <span>Reopen last session? {savedSession.files.map((p) => p.split(/[\\/]/).pop()).join(", ")}</span>
+            <div className="session-banner-actions">
+              <button onClick={restoreSession}>Restore</button>
+              <button className="ghost" onClick={() => setSavedSession(null)}>Dismiss</button>
+            </div>
+          </div>
+        )}
         <div className="plot-wrap">
           {view
             ? tab === "chart" ? <ChartView view={view} showZero={showZero} /> : <DataTable view={view} />
             : !loading && (
               <div className="empty">
                 {files.length === 0
-                  ? "Add one or more GDX files to begin."
+                  ? savedSession
+                    ? null
+                    : "Add one or more GDX files to begin."
                   : !setup?.symbol
                     ? "Pick a symbol to plot."
                     : null}
