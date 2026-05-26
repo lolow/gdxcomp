@@ -51,7 +51,6 @@ fn bench_build_view(c: &mut Criterion) {
 
     let mut setup = DisplaySetup::for_symbol("ykali");
     setup.x_dim = 0;
-    setup.series_dim = Some(1);
     // Pre-refine so bench measures only build_view, not the extra distinct_keys read.
     let setup = refine_setup(&files, &setup).unwrap();
 
@@ -73,7 +72,6 @@ fn bench_refine_and_build(c: &mut Criterion) {
         b.iter(|| {
             let mut setup = DisplaySetup::for_symbol("ykali");
             setup.x_dim = 0;
-            setup.series_dim = Some(1);
             let setup = refine_setup(&files, &setup).unwrap();
             build_view(&files, &setup).unwrap()
         })
