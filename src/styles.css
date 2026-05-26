@@ -92,8 +92,50 @@ header.bar .sub {
   grid-area: center;
   background: var(--panel);
   display: grid;
-  grid-template-rows: auto 1fr;
+  grid-template-rows: auto auto 1fr;
   overflow: hidden;
+}
+.symbol-title {
+  padding: 5px 14px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  cursor: default;
+  min-height: 32px;
+}
+.symbol-title-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink);
+  white-space: nowrap;
+}
+.symbol-title-text {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex-shrink: 1;
+  min-width: 0;
+}
+.symbol-title-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-left: auto;
+}
+.filter-chip {
+  display: inline-block;
+  padding: 1px 7px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
 }
 .plot-toolbar {
   display: flex;

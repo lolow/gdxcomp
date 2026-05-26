@@ -16,7 +16,7 @@ export function App() {
   const [view, setView] = useState<PlotView | null>(null);
   const [loading, setLoading] = useState(false);
   const [tab, setTab] = useState<"chart" | "table">("chart");
-  const [showZero, setShowZero] = useState(false);
+  const [showZero, setShowZero] = useState(true);
   const [leftOpen, setLeftOpen] = useState(true);
   const [rightOpen, setRightOpen] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -24,7 +24,7 @@ export function App() {
   const syncFromBackend = useCallback(async () => {
     const f = await api.listFiles();
     setFiles(f);
-    setSymbols(await api.commonSymbols());
+    setSymbols((await api.commonSymbols()).filter((s) => s.kind !== "set"));
   }, []);
 
   useEffect(() => {
@@ -134,6 +134,27 @@ export function App() {
 
   const gridCols = `${leftOpen ? "280px" : "0px"} 1fr ${rightOpen ? "300px" : "0px"}`;
 
+  const filterChips = useMemo(() => {
+    if (!currentSymbol || !setup) return [];
+    const chips: { key: string; label: string }[] = [];
+    if (currentSymbol.kind === "variable" || currentSymbol.kind === "equation") {
+      chips.push({ key: "field", label: setup.field });
+    }
+    for (let d = 0; d < currentSymbol.dim; d++) {
+      if (d === setup.xDim) continue;
+      const dimName = currentSymbol.domains[d] ?? `d${d}`;
+      const filterVals = setup.filters[String(d)];
+      if (filterVals && filterVals.length === 1) {
+        chips.push({ key: `f${d}`, label: `${dimName}: ${filterVals[0]}` });
+      } else {
+        const agg = setup.dimAgg[String(d)];
+        if (agg === "sum") chips.push({ key: `a${d}`, label: `${dimName}: sum` });
+        else if (agg === "mean") chips.push({ key: `a${d}`, label: `${dimName}: mean` });
+      }
+    }
+    return chips;
+  }, [currentSymbol, setup]);
+
   return (
     <div className="app" style={{ gridTemplateColumns: gridCols }}>
       <header className="bar">
@@ -195,6 +216,19 @@ export function App() {
           )}
           {error && <span className="error-inline">{error}</span>}
         </div>
+        {currentSymbol && (
+          <div className="symbol-title" title={currentSymbol.text || undefined}>
+            <span className="symbol-title-name">{currentSymbol.name}</span>
+            {currentSymbol.text && <span className="symbol-title-text">{currentSymbol.text}</span>}
+            {filterChips.length > 0 && (
+              <span className="symbol-title-chips">
+                {filterChips.map((c) => (
+                  <span key={c.key} className="filter-chip">{c.label}</span>
+                ))}
+              </span>
+            )}
+          </div>
+        )}
         <div className="plot-wrap">
           {view
             ? tab === "chart" ? <ChartView view={view} showZero={showZero} /> : <DataTable view={view} />
