@@ -20,6 +20,9 @@ export const api = {
   removeGdx(path: string): Promise<FileMeta[]> {
     return invoke("remove_gdx", { path });
   },
+  clearFiles(): Promise<FileMeta[]> {
+    return invoke("clear_files");
+  },
   listFiles(): Promise<FileMeta[]> {
     return invoke("list_files");
   },

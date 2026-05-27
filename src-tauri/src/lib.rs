@@ -20,6 +20,7 @@ pub fn run() {
             commands::open_gdx,
             commands::open_folder,
             commands::remove_gdx,
+            commands::clear_files,
             commands::list_files,
             commands::common_symbols_cmd,
             commands::distinct_keys,

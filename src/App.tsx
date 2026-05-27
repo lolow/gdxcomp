@@ -132,6 +132,17 @@ export function App() {
     }
   }
 
+  async function handleClearFiles() {
+    try {
+      await api.clearFiles();
+      setFiles([]);
+      setSetup(null);
+      setView(null);
+    } catch (e) {
+      setError(String(e));
+    }
+  }
+
   async function handleRename(path: string, scenario: string) {
     try {
       const updated = await api.renameScenario(path, scenario);
@@ -320,7 +331,7 @@ export function App() {
       <div className={`col left${leftOpen ? "" : " collapsed"}`}>
         {leftOpen && (
           <>
-            <FileBar files={files} onOpen={handleOpen} onOpenFolder={handleOpenFolder} onRemove={handleRemove} onRename={handleRename} onResetScenarios={handleResetScenarios} />
+            <FileBar files={files} onOpen={handleOpen} onOpenFolder={handleOpenFolder} onRemove={handleRemove} onRename={handleRename} onResetScenarios={handleResetScenarios} onClearFiles={handleClearFiles} />
             <SymbolPicker symbols={sortedSymbols} selected={setup?.symbol ?? null} onSelect={selectSymbol} />
           </>
         )}

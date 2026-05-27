@@ -9,9 +9,10 @@ interface Props {
   onRemove: (path: string) => void;
   onRename: (path: string, scenario: string) => void;
   onResetScenarios: () => void;
+  onClearFiles: () => void;
 }
 
-export function FileBar({ files, onOpen, onOpenFolder, onRemove, onRename, onResetScenarios }: Props) {
+export function FileBar({ files, onOpen, onOpenFolder, onRemove, onRename, onResetScenarios, onClearFiles }: Props) {
   const [modalOpen, setModalOpen] = useState(false);
 
   async function pick() {
@@ -61,6 +62,11 @@ export function FileBar({ files, onOpen, onOpenFolder, onRemove, onRename, onRes
                 <button className="ghost" style={{ fontSize: 12, color: "var(--muted)" }} onClick={onResetScenarios} title="Reset all scenario names to defaults">
                   Reset names
                 </button>
+                {files.length > 0 && (
+                  <button className="ghost" style={{ fontSize: 12, color: "var(--danger, #c0392b)" }} onClick={() => { onClearFiles(); setModalOpen(false); }} title="Remove all files">
+                    Remove all
+                  </button>
+                )}
                 <button className="ghost" onClick={() => setModalOpen(false)}>✕</button>
               </div>
             </div>

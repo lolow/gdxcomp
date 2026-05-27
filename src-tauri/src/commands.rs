@@ -265,6 +265,12 @@ pub fn remove_gdx(path: String, state: State<AppState>) -> Vec<FileMeta> {
 }
 
 #[tauri::command]
+pub fn clear_files(state: State<AppState>) -> Vec<FileMeta> {
+    state.entries.lock().unwrap().clear();
+    vec![]
+}
+
+#[tauri::command]
 pub fn list_files(state: State<AppState>) -> Vec<FileMeta> {
     let entries = state.entries.lock().unwrap();
     snapshot(&entries)
