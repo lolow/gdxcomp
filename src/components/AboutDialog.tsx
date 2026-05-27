@@ -1,23 +1,25 @@
 import { useEffect, useState } from "react";
 import { getVersion } from "@tauri-apps/api/app";
 
-const WITCH = `
-      *   .   *   .   *
-    .   *   .   *   .
-
-          ___
-         /   \\
-        / o o \\
-       |   ^   |
-        \\ ~~~ /
-      .--'---'--.
-     /  a  spell  \\
-    |   just for   |
-    |     you!     |
-     \\____________/
-          | |
-         _| |_
-        (_____)
+// ASCII art by snd — "Double double, toil and trouble"
+const WITCH = String.raw`
+               (       "     )
+                ( _  *
+                   * (     /      \    ___
+                      "     "        _/ /
+                     (   *  )    ___/   |
+                       )   "     _ o)'-./__
+                      *  _ )    (_, . $$$
+                      (  )   __ __ 7_ $$$$
+                       ( :  { _)  '---  $\
+                  ______'___//__\   ____, \
+                   )           ( \_/ _____\_
+                 .'             \   \------''.
+                 |='           '=|  |         )
+                 |               |  |  .    _/
+                  \    (. ) ,   /  /__I_____\
+              snd  '._/_)_(\__.'   (__,(__,_]
+                  @---()_.'---@
 `;
 
 interface Props {
