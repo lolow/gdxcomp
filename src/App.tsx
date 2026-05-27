@@ -254,6 +254,14 @@ export function App() {
         conversionFactor: (44 / 12) * 1000 / gwp,
       };
     }
+    if (eFilter.every((v) => v.toLowerCase().startsWith("n2o"))) {
+      // AR4 GWP default for N2O = 298.
+      const gwp = emiGwp[eFilter[0]] ?? 298;
+      return {
+        unitOptions: [currentUnit, currentUnit.replace(/GtCe/, "Mt")],
+        conversionFactor: (44 / 12) * 1000 / gwp,
+      };
+    }
     return { unitOptions: null, conversionFactor: 1 };
   }, [currentUnit, currentSymbol, setup, emiGwp]);
 
