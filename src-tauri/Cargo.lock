@@ -1010,7 +1010,7 @@ dependencies = [
 
 [[package]]
 name = "gdxcomp"
-version = "0.0.3"
+version = "0.0.4"
 dependencies = [
  "gdxcomp-core",
  "serde",

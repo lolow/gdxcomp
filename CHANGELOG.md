@@ -6,12 +6,25 @@ All notable changes are documented here. Versions follow [semver](https://semver
 
 ## [Unreleased]
 
+---
+
+## [0.0.4] — 2026-05-27
+
 ### Added
 - WITCH mode: CH4 unit conversion `GtCe/yr → Mt/yr` using GWP from `emi_gwp`
-  parameter (AR4 default = 25 if parameter absent). Toggle appears when
-  `e=ch4*` and unit contains `Ce`.
+  parameter (AR4 default = 25 if parameter absent).
+- WITCH mode: N2O unit conversion `GtCe/yr → Mt/yr` using GWP from `emi_gwp`
+  parameter (AR4 default = 298 if parameter absent).
+- Energy unit conversion toggle `TWh ↔ EJ` for any symbol whose unit contains
+  `TWh` (factor 3.6/1000); available in all modes.
 - New backend command `read_param_map` to read any 1-dim parameter as a
   key→value map.
+- Y-axis title shows the symbol unit in all modes (extracted from `[…]` in
+  description).
+
+### Fixed
+- CH4 conversion now correctly applies the C→CO2 factor (44/12) before
+  dividing by GWP.
 
 ---
 
