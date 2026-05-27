@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "./api";
+import { AboutDialog } from "./components/AboutDialog";
 import { ChartView } from "./components/ChartView";
 import { DataTable } from "./components/DataTable";
 import { FileBar } from "./components/FileBar";
@@ -34,6 +35,7 @@ export function App() {
   const [leftOpen, setLeftOpen] = useState(true);
   const [rightOpen, setRightOpen] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [aboutOpen, setAboutOpen] = useState(false);
   const [mode, setMode] = useState<AppMode>("gdx");
   const [savedSession, setSavedSession] = useState<Session | null>(null);
   const [unitChoice, setUnitChoice] = useState<string | null>(null);
@@ -302,7 +304,7 @@ export function App() {
     <div className="app" style={{ gridTemplateColumns: gridCols }}>
       <header className="bar">
         <h1>
-          gdxcomp<span className="sub">plot &amp; compare GDX</span>
+          <span className="app-name" onClick={() => setAboutOpen(true)} title="About gdxcomp">gdxcomp</span><span className="sub">plot &amp; compare GDX</span>
         </h1>
         <div className="bar-right">
           <div className="toggle-group mode-toggle">
@@ -437,6 +439,8 @@ export function App() {
           )
         )}
       </div>
+
+      {aboutOpen && <AboutDialog onClose={() => setAboutOpen(false)} />}
     </div>
   );
 }

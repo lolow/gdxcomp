@@ -51,6 +51,12 @@ header.bar .sub {
   font-weight: 400;
   margin-left: 8px;
 }
+.app-name {
+  cursor: pointer;
+}
+.app-name:hover {
+  text-decoration: underline dotted;
+}
 .bar-right {
   display: flex;
   align-items: center;
@@ -336,6 +342,35 @@ label.field > span {
   padding: 12px 16px;
   max-height: 400px;
   overflow-y: auto;
+}
+
+.about-modal {
+  width: 340px;
+  text-align: center;
+}
+.about-body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 16px;
+}
+.about-ascii {
+  font-family: monospace;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--accent);
+  margin: 0;
+  user-select: none;
+}
+.about-info {
+  font-size: 13px;
+  line-height: 1.8;
+  color: var(--fg);
+}
+.about-tagline {
+  color: var(--muted);
+  font-size: 12px;
 }
 
 .files-table {
