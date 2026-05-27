@@ -44,4 +44,7 @@ export const api = {
   loadSession(): Promise<Session | null> {
     return invoke("load_session");
   },
+  readParamMap(symbol: string): Promise<Record<string, number>> {
+    return invoke("read_param_map", { symbol });
+  },
 };

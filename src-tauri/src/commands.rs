@@ -4,6 +4,7 @@
 //! Files are cached in app state (metadata only); records are read lazily per
 //! `get_view` call and not held in memory between calls.
 
+use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
 use std::sync::Mutex;
@@ -364,4 +365,31 @@ pub fn load_session(app: AppHandle) -> Option<Session> {
     let path = session_path(&app)?;
     let data = fs::read_to_string(path).ok()?;
     serde_json::from_str(&data).ok()
+}
+
+// ---------------------------------------------------------------------------
+// Parameter utilities
+// ---------------------------------------------------------------------------
+
+/// Read a 1-dim parameter as a {key -> level_value} map from the first file
+/// that contains the symbol.
+#[tauri::command]
+pub fn read_param_map(symbol: String, state: State<AppState>) -> HashMap<String, f64> {
+    let entries = state.entries.lock().unwrap();
+    for e in entries.iter() {
+        if let Ok(records) = e.file.read_records(&symbol) {
+            let map: HashMap<String, f64> = records
+                .into_iter()
+                .filter_map(|r| {
+                    let key = r.keys.into_iter().next()?;
+                    let val = r.values[0];
+                    val.is_finite().then_some((key, val))
+                })
+                .collect();
+            if !map.is_empty() {
+                return map;
+            }
+        }
+    }
+    HashMap::new()
 }

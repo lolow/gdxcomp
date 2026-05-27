@@ -37,6 +37,7 @@ export function App() {
   const [mode, setMode] = useState<AppMode>("gdx");
   const [savedSession, setSavedSession] = useState<Session | null>(null);
   const [unitChoice, setUnitChoice] = useState<string | null>(null);
+  const [emiGwp, setEmiGwp] = useState<Record<string, number>>({});
 
   const syncFromBackend = useCallback(async () => {
     const f = await api.listFiles();
@@ -52,6 +53,12 @@ export function App() {
     api.loadSession().then((s) => { if (s && s.files.length > 0) setSavedSession(s); }).catch(() => {});
     syncFromBackend().catch((e) => setError(String(e)));
   }, [syncFromBackend]);
+
+  // Load emi_gwp parameter map whenever WITCH files are open.
+  useEffect(() => {
+    if (files.length === 0 || mode !== "witch") { setEmiGwp({}); return; }
+    api.readParamMap("emi_gwp").then(setEmiGwp).catch(() => {});
+  }, [files, mode]);
 
   // Persist session whenever the file list or selected symbol changes.
   useEffect(() => {
@@ -223,20 +230,35 @@ export function App() {
   // When the symbol or base unit changes, reset any manual unit choice.
   useEffect(() => { setUnitChoice(null); }, [currentUnit]);
 
-  // Unit toggle: only when e is filtered to co2* and unit contains "Ce".
-  const unitOptions = useMemo((): string[] | null => {
-    if (!currentUnit || !currentUnit.includes("Ce") || !currentSymbol || !setup) return null;
+  // Unit toggle: e=co2* → GtCe→Gt (×44/12); e=ch4* → GtCe→Mt (×1000/gwp).
+  const { unitOptions, conversionFactor: unitConversionFactor } = useMemo(() => {
+    if (!currentUnit || !currentUnit.includes("Ce") || !currentSymbol || !setup) {
+      return { unitOptions: null, conversionFactor: 1 };
+    }
     const eDim = currentSymbol.domains.indexOf("e");
-    if (eDim < 0) return null;
+    if (eDim < 0) return { unitOptions: null, conversionFactor: 1 };
     const eFilter = setup.filters[String(eDim)];
-    if (!eFilter || eFilter.length === 0) return null;
-    if (!eFilter.every((v) => v.toLowerCase().startsWith("co2"))) return null;
-    return [currentUnit, currentUnit.replace(/GtCe/, "Gt")];
-  }, [currentUnit, currentSymbol, setup]);
+    if (!eFilter || eFilter.length === 0) return { unitOptions: null, conversionFactor: 1 };
+
+    if (eFilter.every((v) => v.toLowerCase().startsWith("co2"))) {
+      return {
+        unitOptions: [currentUnit, currentUnit.replace(/GtCe/, "Gt")],
+        conversionFactor: 44 / 12,
+      };
+    }
+    if (eFilter.every((v) => v.toLowerCase().startsWith("ch4"))) {
+      // Look up GWP for the first filtered e value; fall back to AR4 default (25).
+      const gwp = emiGwp[eFilter[0]] ?? 25;
+      return {
+        unitOptions: [currentUnit, currentUnit.replace(/GtCe/, "Mt")],
+        conversionFactor: 1000 / gwp,
+      };
+    }
+    return { unitOptions: null, conversionFactor: 1 };
+  }, [currentUnit, currentSymbol, setup, emiGwp]);
 
   const displayUnit = unitOptions ? (unitChoice ?? unitOptions[0]) : currentUnit;
-  // GtCe → Gt(CO2): multiply by 44/12 (carbon → CO2 molecular weight).
-  const conversionFactor = unitOptions && displayUnit === unitOptions[1] ? 44 / 12 : 1;
+  const conversionFactor = unitOptions && displayUnit === unitOptions[1] ? unitConversionFactor : 1;
 
   return (
     <div className="app" style={{ gridTemplateColumns: gridCols }}>

@@ -28,6 +28,7 @@ pub fn run() {
             commands::reset_scenarios,
             commands::save_session,
             commands::load_session,
+            commands::read_param_map,
         ])
         .run(tauri::generate_context!())
         .expect("error while running gdxcomp");
