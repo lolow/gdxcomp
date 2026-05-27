@@ -127,6 +127,16 @@ header.bar .sub {
   gap: 4px;
   margin-left: auto;
 }
+.unit-badge {
+  font-size: 11px;
+  font-family: ui-monospace, monospace;
+  background: #e8f5e9;
+  color: #2e7d32;
+  border: 1px solid #a5d6a7;
+  border-radius: 4px;
+  padding: 1px 6px;
+  white-space: nowrap;
+}
 .filter-chip {
   display: inline-block;
   padding: 1px 7px;

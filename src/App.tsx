@@ -10,6 +10,13 @@ import type { AppMode, DisplaySetup, FileMeta, PlotView, Session, SymbolMeta } f
 import { defaultSetup } from "./types";
 
 const WITCH_SYMBOLS = new Set(["Q", "Q_EMI", "Q_FUEL", "I", "I_EN"]);
+const UNIT_FIELDS = new Set(["level", "lower", "upper"]);
+
+function extractUnit(text: string): string | null {
+  const matches = text.match(/\[([^\]]+)\]/g);
+  if (!matches) return null;
+  return matches[matches.length - 1].slice(1, -1);
+}
 
 function detectMode(syms: SymbolMeta[]): AppMode {
   if (WITCH_SYMBOLS.size > 0 && syms.some((s) => WITCH_SYMBOLS.has(s.name))) return "witch";
@@ -200,6 +207,12 @@ export function App() {
     return chips;
   }, [currentSymbol, setup]);
 
+  const currentUnit = useMemo(() => {
+    if (mode !== "witch" || !currentSymbol?.text || !setup) return null;
+    if (!UNIT_FIELDS.has(setup.field)) return null;
+    return extractUnit(currentSymbol.text);
+  }, [mode, currentSymbol, setup?.field]);
+
   return (
     <div className="app" style={{ gridTemplateColumns: gridCols }}>
       <header className="bar">
@@ -269,6 +282,7 @@ export function App() {
           <div className="symbol-title" title={currentSymbol.text || undefined}>
             <span className="symbol-title-name">{currentSymbol.name}</span>
             {currentSymbol.text && <span className="symbol-title-text">{currentSymbol.text}</span>}
+            {currentUnit && <span className="unit-badge">{currentUnit}</span>}
             {filterChips.length > 0 && (
               <span className="symbol-title-chips">
                 {filterChips.map((c) => (
@@ -289,7 +303,7 @@ export function App() {
         )}
         <div className="plot-wrap">
           {view
-            ? tab === "chart" ? <ChartView view={view} showZero={showZero} /> : <DataTable view={view} />
+            ? tab === "chart" ? <ChartView view={view} showZero={showZero} unit={currentUnit} /> : <DataTable view={view} />
             : !loading && (
               <div className="empty">
                 {files.length === 0

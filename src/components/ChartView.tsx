@@ -8,9 +8,10 @@ const Plot = createPlotlyComponent(Plotly);
 interface Props {
   view: PlotView;
   showZero: boolean;
+  unit?: string | null;
 }
 
-export function ChartView({ view, showZero }: Props) {
+export function ChartView({ view, showZero, unit }: Props) {
   const data = useMemo(
     () =>
       view.traces.map((t) => ({
@@ -26,10 +27,13 @@ export function ChartView({ view, showZero }: Props) {
 
   const rangemode = showZero ? "tozero" : "normal";
 
-  const yTitle =
-    view.kind === "variable" || view.kind === "equation"
-      ? `${view.symbol} (${view.field})`
-      : view.symbol;
+  const yTitle = (() => {
+    const base =
+      view.kind === "variable" || view.kind === "equation"
+        ? `${view.symbol} (${view.field})`
+        : view.symbol;
+    return unit ? `${base} [${unit}]` : base;
+  })();
 
   const xAxisType =
     view.traces.length > 0 && typeof view.traces[0].x[0] === "number" ? "linear" : "category";
