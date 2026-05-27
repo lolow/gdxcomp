@@ -248,7 +248,7 @@ export function App() {
     }
 
     // Carbon price: T$/GtonCe ↔ $/tCO2 (×1000×12/44)
-    if (currentUnit.includes("T$") && currentUnit.toLowerCase().includes("gtonc")) {
+    if (/T\$.*[Gg]ton[Cc]/i.test(currentUnit)) {
       return {
         unitOptions: [currentUnit, "$/tCO2"],
         conversionFactor: 1000 * 12 / 44,
