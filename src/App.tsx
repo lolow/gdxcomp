@@ -251,7 +251,7 @@ export function App() {
       const gwp = emiGwp[eFilter[0]] ?? 25;
       return {
         unitOptions: [currentUnit, currentUnit.replace(/GtCe/, "Mt")],
-        conversionFactor: 1000 / gwp,
+        conversionFactor: (44 / 12) * 1000 / gwp,
       };
     }
     return { unitOptions: null, conversionFactor: 1 };
