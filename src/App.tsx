@@ -277,12 +277,14 @@ export function App() {
             </label>
           )}
           {error && <span className="error-inline">{error}</span>}
+          {tab === "chart" && currentUnit && (
+            <span className="unit-display">{currentUnit}</span>
+          )}
         </div>
         {currentSymbol && (
           <div className="symbol-title" title={currentSymbol.text || undefined}>
             <span className="symbol-title-name">{currentSymbol.name}</span>
             {currentSymbol.text && <span className="symbol-title-text">{currentSymbol.text}</span>}
-            {currentUnit && <span className="unit-badge">{currentUnit}</span>}
             {filterChips.length > 0 && (
               <span className="symbol-title-chips">
                 {filterChips.map((c) => (

@@ -127,15 +127,17 @@ header.bar .sub {
   gap: 4px;
   margin-left: auto;
 }
-.unit-badge {
-  font-size: 11px;
+.unit-display {
+  margin-left: auto;
+  font-size: 12px;
   font-family: ui-monospace, monospace;
-  background: #e8f5e9;
-  color: #2e7d32;
-  border: 1px solid #a5d6a7;
-  border-radius: 4px;
-  padding: 1px 6px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  padding: 2px 8px;
   white-space: nowrap;
+  opacity: 0.85;
 }
 .filter-chip {
   display: inline-block;
