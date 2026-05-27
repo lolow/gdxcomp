@@ -148,8 +148,13 @@ export function App() {
     setSavedSession(null);
     try {
       await api.openGdx(savedSession.files);
-      await syncFromBackend();
-      if (savedSession.lastSymbol) selectSymbol(savedSession.lastSymbol);
+      const f = await api.listFiles();
+      setFiles(f);
+      const syms = (await api.commonSymbols()).filter((s) => s.kind !== "set");
+      setSymbols(syms);
+      const detectedMode = detectMode(syms);
+      setMode(detectedMode);
+      if (savedSession.lastSymbol) selectSymbol(savedSession.lastSymbol, detectedMode);
     } catch (e) {
       setError(String(e));
     }
@@ -162,10 +167,11 @@ export function App() {
     return [...symbols].sort((a, b) => (a.name === last ? -1 : b.name === last ? 1 : 0));
   }, [symbols, savedSession, setup]);
 
-  function selectSymbol(name: string) {
+  function selectSymbol(name: string, withMode?: AppMode) {
+    const m = withMode ?? mode;
     const sym = symbols.find((s) => s.name === name);
-    let s = defaultSetup(name, mode);
-    if (mode === "witch" && sym) {
+    let s = defaultSetup(name, m);
+    if (m === "witch" && sym) {
       const tIdx = sym.domains.indexOf("t");
       if (tIdx >= 0) s = { ...s, xDim: tIdx };
     }
@@ -217,16 +223,11 @@ export function App() {
   // When the symbol or base unit changes, reset any manual unit choice.
   useEffect(() => { setUnitChoice(null); }, [currentUnit]);
 
-  // Available unit options when e is filtered to co2* and unit contains "Ce".
+  // Available unit options whenever the unit contains "Ce" in WITCH mode.
   const unitOptions = useMemo((): string[] | null => {
-    if (!currentUnit || !currentUnit.includes("Ce") || !currentSymbol || !setup) return null;
-    const eDim = currentSymbol.domains.indexOf("e");
-    if (eDim < 0) return null;
-    const eFilter = setup.filters[String(eDim)];
-    if (!eFilter || eFilter.length === 0) return null;
-    if (!eFilter.every((v) => v.toLowerCase().startsWith("co2"))) return null;
+    if (!currentUnit || !currentUnit.includes("Ce")) return null;
     return [currentUnit, currentUnit.replace("Ce", "C")];
-  }, [currentUnit, currentSymbol, setup]);
+  }, [currentUnit]);
 
   const displayUnit = unitOptions ? (unitChoice ?? unitOptions[0]) : currentUnit;
   // Conversion factor placeholder — will be replaced with real chemistry later.
