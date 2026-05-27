@@ -232,9 +232,20 @@ export function App() {
 
   // Unit toggle: e=co2* → GtCe→Gt (×44/12); e=ch4* → GtCe→Mt (×1000/gwp).
   const { unitOptions, conversionFactor: unitConversionFactor } = useMemo(() => {
-    if (!currentUnit || !currentUnit.includes("Ce") || !currentSymbol || !setup) {
+    if (!currentUnit || !currentSymbol || !setup) {
       return { unitOptions: null, conversionFactor: 1 };
     }
+
+    // Energy: TWh ↔ EJ (1 TWh = 3.6e-3 EJ)
+    if (currentUnit.includes("TWh")) {
+      return {
+        unitOptions: [currentUnit, currentUnit.replace("TWh", "EJ")],
+        conversionFactor: 3.6 / 1000,
+      };
+    }
+
+    // Emissions: Ce-based units require an e-dimension filter
+    if (!currentUnit.includes("Ce")) return { unitOptions: null, conversionFactor: 1 };
     const eDim = currentSymbol.domains.indexOf("e");
     if (eDim < 0) return { unitOptions: null, conversionFactor: 1 };
     const eFilter = setup.filters[String(eDim)];
