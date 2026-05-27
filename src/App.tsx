@@ -247,6 +247,14 @@ export function App() {
       return { unitOptions: null, conversionFactor: 1 };
     }
 
+    // Carbon price: T$/GtonCe ↔ $/tCO2 (×1000×12/44)
+    if (currentUnit.includes("T$") && currentUnit.toLowerCase().includes("gtonc")) {
+      return {
+        unitOptions: [currentUnit, "$/tCO2"],
+        conversionFactor: 1000 * 12 / 44,
+      };
+    }
+
     // Energy: TWh ↔ EJ (1 TWh = 3.6e-3 EJ)
     if (currentUnit.includes("TWh")) {
       return {
