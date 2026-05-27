@@ -36,6 +36,7 @@ export function App() {
   const [error, setError] = useState<string | null>(null);
   const [mode, setMode] = useState<AppMode>("gdx");
   const [savedSession, setSavedSession] = useState<Session | null>(null);
+  const [unitChoice, setUnitChoice] = useState<string | null>(null);
 
   const syncFromBackend = useCallback(async () => {
     const f = await api.listFiles();
@@ -213,6 +214,24 @@ export function App() {
     return extractUnit(currentSymbol.text);
   }, [mode, currentSymbol, setup?.field]);
 
+  // When the symbol or base unit changes, reset any manual unit choice.
+  useEffect(() => { setUnitChoice(null); }, [currentUnit]);
+
+  // Available unit options when e is filtered to co2* and unit contains "Ce".
+  const unitOptions = useMemo((): string[] | null => {
+    if (!currentUnit || !currentUnit.includes("Ce") || !currentSymbol || !setup) return null;
+    const eDim = currentSymbol.domains.indexOf("e");
+    if (eDim < 0) return null;
+    const eFilter = setup.filters[String(eDim)];
+    if (!eFilter || eFilter.length === 0) return null;
+    if (!eFilter.every((v) => v.toLowerCase().startsWith("co2"))) return null;
+    return [currentUnit, currentUnit.replace("Ce", "C")];
+  }, [currentUnit, currentSymbol, setup]);
+
+  const displayUnit = unitOptions ? (unitChoice ?? unitOptions[0]) : currentUnit;
+  // Conversion factor placeholder — will be replaced with real chemistry later.
+  const conversionFactor = unitOptions && displayUnit === unitOptions[1] ? 1 : 1;
+
   return (
     <div className="app" style={{ gridTemplateColumns: gridCols }}>
       <header className="bar">
@@ -277,8 +296,16 @@ export function App() {
             </label>
           )}
           {error && <span className="error-inline">{error}</span>}
-          {tab === "chart" && currentUnit && (
-            <span className="unit-display">{currentUnit}</span>
+          {tab === "chart" && displayUnit && (
+            unitOptions ? (
+              <div className="toggle-group unit-toggle">
+                {unitOptions.map((u) => (
+                  <button key={u} className={displayUnit === u ? "on" : ""} onClick={() => setUnitChoice(u)}>{u}</button>
+                ))}
+              </div>
+            ) : (
+              <span className="unit-display">{displayUnit}</span>
+            )
           )}
         </div>
         {currentSymbol && (
@@ -305,7 +332,7 @@ export function App() {
         )}
         <div className="plot-wrap">
           {view
-            ? tab === "chart" ? <ChartView view={view} showZero={showZero} unit={currentUnit} /> : <DataTable view={view} />
+            ? tab === "chart" ? <ChartView view={view} showZero={showZero} unit={displayUnit} conversionFactor={conversionFactor} /> : <DataTable view={view} />
             : !loading && (
               <div className="empty">
                 {files.length === 0

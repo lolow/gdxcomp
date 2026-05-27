@@ -127,6 +127,11 @@ header.bar .sub {
   gap: 4px;
   margin-left: auto;
 }
+.unit-toggle {
+  margin-left: auto;
+  font-family: ui-monospace, monospace;
+  font-size: 12px;
+}
 .unit-display {
   margin-left: auto;
   font-size: 12px;

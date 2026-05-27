@@ -9,9 +9,10 @@ interface Props {
   view: PlotView;
   showZero: boolean;
   unit?: string | null;
+  conversionFactor?: number;
 }
 
-export function ChartView({ view, showZero, unit }: Props) {
+export function ChartView({ view, showZero, unit, conversionFactor = 1 }: Props) {
   const data = useMemo(
     () =>
       view.traces.map((t) => ({
@@ -19,10 +20,12 @@ export function ChartView({ view, showZero, unit }: Props) {
         mode: "lines+markers",
         name: t.name,
         x: t.x,
-        y: t.y,
+        y: conversionFactor !== 1
+          ? t.y.map((v) => (v === null ? null : (v as number) * conversionFactor))
+          : t.y,
         connectgaps: false,
       })),
-    [view],
+    [view, conversionFactor],
   );
 
   const rangemode = showZero ? "tozero" : "normal";
