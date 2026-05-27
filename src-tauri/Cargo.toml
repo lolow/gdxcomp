@@ -1,6 +1,6 @@
 [package]
 name = "gdxcomp"
-version = "0.0.2"
+version = "0.0.3"
 edition = "2021"
 license = "MIT"
 description = "Plot and compare GAMS GDX files"
