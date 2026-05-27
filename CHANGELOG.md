@@ -8,6 +8,22 @@ All notable changes are documented here. Versions follow [semver](https://semver
 
 ---
 
+## [0.0.5] — 2026-05-27
+
+### Added
+- Unit conversion `T$/GtonCe → $/tCO2` (factor 1000×12/44) for carbon price
+  symbols; toggle appears when unit matches `T$/GtonC*` pattern.
+- "Remove all files" button in the file modal.
+- Energy unit conversion `TWh ↔ EJ` available in all non-GDX modes.
+- Y-axis title shows extracted unit `[…]` in all modes.
+
+### Fixed
+- Carbon price conversion regex enforces `T$` before `GtonC` to avoid false
+  match on inverted ratios.
+- Unit conversion toggles restricted to non-GDX modes.
+
+---
+
 ## [0.0.4] — 2026-05-27
 
 ### Added
