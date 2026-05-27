@@ -222,10 +222,10 @@ export function App() {
   }, [currentSymbol, setup]);
 
   const currentUnit = useMemo(() => {
-    if (mode !== "witch" || !currentSymbol?.text || !setup) return null;
+    if (!currentSymbol?.text || !setup) return null;
     if (!UNIT_FIELDS.has(setup.field)) return null;
     return extractUnit(currentSymbol.text);
-  }, [mode, currentSymbol, setup?.field]);
+  }, [currentSymbol, setup?.field]);
 
   // When the symbol or base unit changes, reset any manual unit choice.
   useEffect(() => { setUnitChoice(null); }, [currentUnit]);

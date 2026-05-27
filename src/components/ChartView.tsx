@@ -30,13 +30,7 @@ export function ChartView({ view, showZero, unit, conversionFactor = 1 }: Props)
 
   const rangemode = showZero ? "tozero" : "normal";
 
-  const yTitle = (() => {
-    const base =
-      view.kind === "variable" || view.kind === "equation"
-        ? `${view.symbol} (${view.field})`
-        : view.symbol;
-    return unit ? `${base} [${unit}]` : base;
-  })();
+  const yTitle = unit ?? "";
 
   const xAxisType =
     view.traces.length > 0 && typeof view.traces[0].x[0] === "number" ? "linear" : "category";
