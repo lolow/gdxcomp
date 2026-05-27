@@ -232,7 +232,7 @@ export function App() {
 
   // Unit toggle: e=co2* → GtCe→Gt (×44/12); e=ch4* → GtCe→Mt (×1000/gwp).
   const { unitOptions, conversionFactor: unitConversionFactor } = useMemo(() => {
-    if (!currentUnit || !currentSymbol || !setup) {
+    if (!currentUnit || !currentSymbol || !setup || mode === "gdx") {
       return { unitOptions: null, conversionFactor: 1 };
     }
 
