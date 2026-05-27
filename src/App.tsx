@@ -223,15 +223,20 @@ export function App() {
   // When the symbol or base unit changes, reset any manual unit choice.
   useEffect(() => { setUnitChoice(null); }, [currentUnit]);
 
-  // Available unit options whenever the unit contains "Ce" in WITCH mode.
+  // Unit toggle: only when e is filtered to co2* and unit contains "Ce".
   const unitOptions = useMemo((): string[] | null => {
-    if (!currentUnit || !currentUnit.includes("Ce")) return null;
-    return [currentUnit, currentUnit.replace("Ce", "C")];
-  }, [currentUnit]);
+    if (!currentUnit || !currentUnit.includes("Ce") || !currentSymbol || !setup) return null;
+    const eDim = currentSymbol.domains.indexOf("e");
+    if (eDim < 0) return null;
+    const eFilter = setup.filters[String(eDim)];
+    if (!eFilter || eFilter.length === 0) return null;
+    if (!eFilter.every((v) => v.toLowerCase().startsWith("co2"))) return null;
+    return [currentUnit, currentUnit.replace(/GtCe/, "Gt")];
+  }, [currentUnit, currentSymbol, setup]);
 
   const displayUnit = unitOptions ? (unitChoice ?? unitOptions[0]) : currentUnit;
-  // Conversion factor placeholder — will be replaced with real chemistry later.
-  const conversionFactor = unitOptions && displayUnit === unitOptions[1] ? 1 : 1;
+  // GtCe → Gt(CO2): multiply by 44/12 (carbon → CO2 molecular weight).
+  const conversionFactor = unitOptions && displayUnit === unitOptions[1] ? 44 / 12 : 1;
 
   return (
     <div className="app" style={{ gridTemplateColumns: gridCols }}>
