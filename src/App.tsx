@@ -344,6 +344,12 @@ export function App() {
     if (/\bGtC\b/.test(currentUnit)) {
       push(currentUnit.replace(/\bGtC\b/, "GtCO2e"), 44 / 12);
     }
+    // Same conversion, verbose form: GTonC ↔ GtCO2e (×44/12). Case-insensitive
+    // because real units appear as "GTonC", "GtonC", etc. Word boundary still
+    // excludes "GTonCe".
+    if (/\bGTonC\b/i.test(currentUnit)) {
+      push(currentUnit.replace(/\bGTonC\b/i, "GtCO2e"), 44 / 12);
+    }
 
     // Carbon equivalent: GtCe ↔ GtCO2e (×44/12). Always applicable when
     // the unit contains GtCe; e-dim specific options below stack on top.
