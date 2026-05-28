@@ -1,8 +1,13 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api } from "./api";
 import { AboutDialog } from "./components/AboutDialog";
-import { ChartView } from "./components/ChartView";
 import { DataTable } from "./components/DataTable";
+
+// Lazy-load ChartView so Plotly's ~1 MB chunk is only fetched the first
+// time the chart tab is shown.
+const ChartView = lazy(() =>
+  import("./components/ChartView").then((m) => ({ default: m.ChartView })),
+);
 import { FileBar } from "./components/FileBar";
 import { FilterPanel } from "./components/FilterPanel";
 import { MappingPanel } from "./components/MappingPanel";
@@ -453,7 +458,11 @@ export function App() {
         <div className="plot-wrap">
           {tab === "chart"
             ? chartView
-              ? <ChartView view={chartView} showZero={showZero} unit={displayUnit} conversionFactor={conversionFactor} />
+              ? (
+                <Suspense fallback={<div className="loading-overlay"><div className="spinner" /></div>}>
+                  <ChartView view={chartView} showZero={showZero} unit={displayUnit} conversionFactor={conversionFactor} />
+                </Suspense>
+              )
               : !loading && (
                 <div className="empty">
                   {files.length === 0
