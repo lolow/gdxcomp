@@ -263,8 +263,25 @@ export function App() {
     });
   }
 
+  // Client-side cache of distinctKeys results by (symbol, dim). Invalidates
+  // when the loaded-file set changes (path identity comparison via JSON of
+  // paths). Returns a stable promise per (symbol, dim) so repeat mounts of
+  // FilterPanel don't trigger IPC.
+  const distinctKeysCache = useRef<Map<string, Promise<string[]>>>(new Map());
+  const filesKey = useMemo(() => files.map((f) => f.path).join(""), [files]);
+  useEffect(() => {
+    distinctKeysCache.current.clear();
+  }, [filesKey]);
   const fetchKeys = useCallback(
-    (dim: number) => (setup ? api.distinctKeys(setup.symbol, dim) : Promise.resolve([])),
+    (dim: number) => {
+      if (!setup) return Promise.resolve<string[]>([]);
+      const key = `${setup.symbol}${dim}`;
+      const cached = distinctKeysCache.current.get(key);
+      if (cached) return cached;
+      const p = api.distinctKeys(setup.symbol, dim);
+      distinctKeysCache.current.set(key, p);
+      return p;
+    },
     [setup?.symbol],
   );
 

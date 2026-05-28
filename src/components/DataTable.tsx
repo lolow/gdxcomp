@@ -97,8 +97,8 @@ export function DataTable({ view }: Props) {
           </tr>
         </thead>
         <tbody>
-          {rows.map((r, i) => (
-            <tr key={i}>
+          {rows.map((r) => (
+            <tr key={`${r.file}${r.keys.join("")}${r.value}`}>
               <td>{r.file}</td>
               {r.keys.map((k, j) => (
                 <td key={j}>{k}</td>
