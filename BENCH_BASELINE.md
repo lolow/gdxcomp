@@ -86,3 +86,18 @@ high-K symbol (e.g. one with thousands of distinct UELs in a dim). Outer
 multi-file accumulator (`out.contains(&k)` in `commands.rs:308` and in the
 bench) is a separate O(K²) layer not addressed by Phase 1.1 and is what makes
 `_19files` net-flat in the table above.
+
+### Phase 1.2 deferred (not applied)
+
+Tried `IndexSet<String>` for `x_order` in `build_view`:
+`build_view_aggregated_4files` 10.58 → 13.22 ms (+25%), regression.
+Tried `HashSet<String>` + `Vec<String>` parallel:
+`build_view_aggregated_4files` 10.58 → 10.82 ms (+3%, within noise);
+`build_view_2dim_aggregated_4files` 8.96 → 10.10 ms (+13%, real).
+
+Both variants regress at the corpus's low K (~30 distinct year values per
+x-dim). The Vec::contains is faster than any hash structure at K≈30 because
+the linear scan fits in L1 cache and string compares of short year labels are
+~5 ns each. The algorithmic O(N²)→O(N) win only materializes at K ≳ 200,
+which our corpus doesn't have. Phase 1.2 reverted; will revisit if a high-K
+build_view workload appears.
