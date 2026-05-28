@@ -339,6 +339,15 @@ export function App() {
       };
     }
 
+    // Mass of carbon: GtC ↔ GtCO2e (×44/12). Word-boundary regex so the
+    // pattern matches "GtC/yr" / "GtC" but not "GtCe", "GtCO2", "GtCH4".
+    if (/\bGtC\b/.test(currentUnit)) {
+      return {
+        unitOptions: [currentUnit, currentUnit.replace(/\bGtC\b/, "GtCO2e")],
+        conversionFactor: 44 / 12,
+      };
+    }
+
     // Emissions: Ce-based units require an e-dimension filter
     if (!currentUnit.includes("Ce")) return { unitOptions: null, conversionFactor: 1 };
     const eDim = currentSymbol.domains.indexOf("e");
