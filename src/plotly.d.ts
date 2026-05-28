@@ -1,6 +1,6 @@
 // Minimal ambient declarations for the Plotly modules we use, which ship
 // without (or with incomplete) TypeScript types.
-declare module "plotly.js-dist-min" {
+declare module "plotly.js-basic-dist-min" {
   const Plotly: unknown;
   export default Plotly;
 }

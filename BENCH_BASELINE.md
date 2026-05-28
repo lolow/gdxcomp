@@ -72,6 +72,9 @@ opt-level=3, strip="symbols").
 | 0 | dist/assets/index-*.js | 4,856,322 | plotly.js-dist-min, ≈ 93% of bundle |
 | 0 | dist/assets/index-*.css | 10,958 | |
 | 0 | dist total | ~4.7 MB | |
+| 4.1 | dist/assets/index-*.js | 1,301,677 | plotly.js-basic-dist-min; **−73% (3.7× smaller)** |
+| 4.1 | dist/assets/index-*.css | 10,958 | unchanged |
+| 4.1 | dist total | ~1.3 MB | |
 
 ---
 

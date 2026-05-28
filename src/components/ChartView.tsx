@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import Plotly from "plotly.js-dist-min";
+import Plotly from "plotly.js-basic-dist-min";
 import createPlotlyComponent from "react-plotly.js/factory";
 import type { ChartView as ChartViewData } from "../types";
 
