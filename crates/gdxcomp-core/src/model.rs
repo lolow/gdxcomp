@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 
 use gdx::{GdxFile, SymbolType};
@@ -64,6 +64,8 @@ pub struct LoadedFile {
     pub label: String,
     pub path: PathBuf,
     pub symbols: Vec<SymbolMeta>,
+    /// Name → index into `symbols`. Built at open time for O(1) lookup.
+    name_index: HashMap<String, usize>,
 }
 
 impl LoadedFile {
@@ -77,7 +79,7 @@ impl LoadedFile {
 
         let file = GdxFile::open(&path)?;
 
-        let symbols = file
+        let symbols: Vec<SymbolMeta> = file
             .symbols()
             .iter()
             .map(|info| SymbolMeta {
@@ -90,15 +92,22 @@ impl LoadedFile {
             })
             .collect();
 
+        let name_index = symbols
+            .iter()
+            .enumerate()
+            .map(|(i, s)| (s.name.clone(), i))
+            .collect();
+
         Ok(LoadedFile {
             label,
             path,
             symbols,
+            name_index,
         })
     }
 
     pub fn symbol(&self, name: &str) -> Option<&SymbolMeta> {
-        self.symbols.iter().find(|s| s.name == name)
+        self.name_index.get(name).map(|&i| &self.symbols[i])
     }
 
     /// Read all records for `symbol` from disk.

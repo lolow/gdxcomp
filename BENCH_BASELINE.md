@@ -25,6 +25,7 @@ opt-level=3, strip="symbols").
 | 0 | distinct_keys_dim0_19files | 39.14 ms | multi-file accumulator (`Vec::contains` x2) |
 | 1.1 | distinct_keys_dim0_ykali | 2.087 ms | HashSet+Vec; -6% on low-K |
 | 1.1 | distinct_keys_dim0_19files | 39.81 ms | unchanged (outer accumulator dominates) |
+| 1.5 | (no change to load_and_view benches) | — | name_index targets common_symbols path |
 | 0 | build_view_aggregated_4files | 10.58 ms | dim_agg=Sum on non-x dim |
 | 0 | build_view_2dim_aggregated_4files | 8.962 ms | picked `allerr` (dim=3), 2 agg dims |
 
@@ -36,6 +37,10 @@ opt-level=3, strip="symbols").
 | 0 | ipc_common_symbols_19files | 286.8 ms | the clone chain dominates |
 | 0 | ipc_distinct_keys_4files | 11.11 ms | per-file scan + dedupe + JSON |
 | 0 | ipc_get_view_4files | 16.08 ms | refine + build + JSON of full PlotView |
+| 1.5 | ipc_common_symbols_4files | 4.785 ms | name_index O(1); **−83.7%** |
+| 1.5 | ipc_common_symbols_19files | 27.99 ms | name_index O(1); **−90.2% (10× faster)** |
+| 1.5 | ipc_distinct_keys_4files | 12.23 ms | within noise |
+| 1.5 | ipc_get_view_4files | 16.76 ms | within noise |
 
 ## Frontend bundle (`./scripts/bundle-size.sh`)
 

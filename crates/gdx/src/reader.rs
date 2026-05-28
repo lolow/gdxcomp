@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::ffi::{CStr, CString};
 use std::os::raw::c_char;
 use std::path::Path;
@@ -20,6 +21,7 @@ pub struct GdxFile {
     obj: *mut ffi::GdxObj,
     special: [f64; ffi::GMS_SVIDX_MAX],
     symbols: Vec<SymbolInfo>,
+    name_index: HashMap<String, usize>,
 }
 
 impl GdxFile {
@@ -62,10 +64,17 @@ impl GdxFile {
                 }
             };
 
+            let name_index = symbols
+                .iter()
+                .enumerate()
+                .map(|(i, s)| (s.name.clone(), i))
+                .collect();
+
             Ok(GdxFile {
                 obj,
                 special,
                 symbols,
+                name_index,
             })
         }
     }
@@ -77,7 +86,7 @@ impl GdxFile {
 
     /// Look up a symbol by name (case-sensitive, as stored in the file).
     pub fn symbol(&self, name: &str) -> Option<&SymbolInfo> {
-        self.symbols.iter().find(|s| s.name == name)
+        self.name_index.get(name).map(|&i| &self.symbols[i])
     }
 
     /// Read all records of the named symbol.
