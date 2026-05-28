@@ -63,11 +63,33 @@ export interface PlotView {
   table: TableRow[];
 }
 
+/** Chart-only slice (matches Rust `ChartView`). */
+export interface ChartView {
+  symbol: string;
+  kind: SymbolKind;
+  field: Field;
+  xLabel: string;
+  traces: Trace[];
+  dimNames: string[];
+}
+
+/** Table-only slice (matches Rust `TableView`). */
+export interface TableView {
+  dimNames: string[];
+  table: TableRow[];
+}
+
 /** Returned by get_view: the rendered plot plus the effective setup used.
  *  The setup may have been refined (e.g. series filter auto-defaulted to first
  *  value); the UI stores it back so the filter panel stays in sync. */
 export interface GetViewResult {
   view: PlotView;
+  setup: DisplaySetup;
+}
+
+/** Returned by get_chart_view: chart-only payload + effective setup. */
+export interface GetChartResult {
+  view: ChartView;
   setup: DisplaySetup;
 }
 

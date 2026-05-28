@@ -12,7 +12,10 @@ mod model;
 mod setup;
 mod witch;
 
-pub use compare::{build_view, common_symbols, refine_setup, PlotView, TableRow, Trace, XValue};
+pub use compare::{
+    build_chart, build_table, build_view, common_symbols, refine_setup, ChartView, PlotView,
+    TableRow, TableView, Trace, XValue,
+};
 pub use error::{CoreError, Result};
 pub use model::{LoadedFile, Rec, SymbolKind, SymbolMeta};
 pub use setup::{AppMode, DimAgg, DisplaySetup, Field};

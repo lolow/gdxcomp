@@ -68,6 +68,62 @@ pub struct PlotView {
     pub table: Vec<TableRow>,
 }
 
+/// Chart-only slice of [`PlotView`]: same shape minus the `table` rows.
+/// Used by `get_chart_view` to keep IPC payload small when the user is on
+/// the chart tab.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ChartView {
+    pub symbol: String,
+    pub kind: SymbolKind,
+    pub field: Field,
+    pub x_label: String,
+    pub traces: Vec<Trace>,
+    pub dim_names: Vec<String>,
+}
+
+/// Table-only slice of [`PlotView`]: just dim names + rows.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TableView {
+    pub dim_names: Vec<String>,
+    pub table: Vec<TableRow>,
+}
+
+impl From<PlotView> for ChartView {
+    fn from(v: PlotView) -> Self {
+        Self {
+            symbol: v.symbol,
+            kind: v.kind,
+            field: v.field,
+            x_label: v.x_label,
+            traces: v.traces,
+            dim_names: v.dim_names,
+        }
+    }
+}
+
+impl From<PlotView> for TableView {
+    fn from(v: PlotView) -> Self {
+        Self {
+            dim_names: v.dim_names,
+            table: v.table,
+        }
+    }
+}
+
+/// Chart-only build. Computes the same internal scan as [`build_view`] but
+/// returns a slim payload (no table rows). Use when the UI is on the chart
+/// tab; pair with [`build_table`] on tab switch.
+pub fn build_chart(files: &[LoadedFile], setup: &DisplaySetup) -> Result<ChartView> {
+    Ok(build_view(files, setup)?.into())
+}
+
+/// Table-only build. Companion to [`build_chart`].
+pub fn build_table(files: &[LoadedFile], setup: &DisplaySetup) -> Result<TableView> {
+    Ok(build_view(files, setup)?.into())
+}
+
 /// Symbols present with the same dimension and kind in *every* file. Sorted by name.
 pub fn common_symbols(files: &[LoadedFile]) -> Vec<SymbolMeta> {
     let Some((first, rest)) = files.split_first() else {

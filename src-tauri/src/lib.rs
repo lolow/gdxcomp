@@ -25,6 +25,8 @@ pub fn run() {
             commands::common_symbols_cmd,
             commands::distinct_keys,
             commands::get_view,
+            commands::get_chart_view,
+            commands::get_table_view,
             commands::rename_scenario,
             commands::reset_scenarios,
             commands::save_session,

@@ -9,7 +9,9 @@
 //! Fixtures: gdx_examples/*.gdx (4 files); optional gdx_examples_more/ (19 files).
 
 use criterion::{criterion_group, criterion_main, Criterion};
-use gdxcomp_core::{build_view, common_symbols, refine_setup, DisplaySetup, LoadedFile};
+use gdxcomp_core::{
+    build_chart, build_table, build_view, common_symbols, refine_setup, DisplaySetup, LoadedFile,
+};
 use std::path::PathBuf;
 
 fn examples_dir() -> PathBuf {
@@ -113,11 +115,51 @@ fn bench_ipc_get_view_4files(c: &mut Criterion) {
     });
 }
 
+/// Mirrors `get_chart_view` body: chart-only payload (no `table` field).
+fn bench_ipc_get_chart_view_4files(c: &mut Criterion) {
+    let paths = list_gdx(&examples_dir());
+    if paths.len() < 4 {
+        return;
+    }
+    let files = load_all(&paths);
+    let mut setup = DisplaySetup::for_symbol("ykali");
+    setup.x_dim = 0;
+    let setup = refine_setup(&files, &setup).unwrap();
+    c.bench_function("ipc_get_chart_view_4files", |b| {
+        b.iter(|| {
+            let clones: Vec<LoadedFile> = files.to_vec();
+            let view = build_chart(&clones, &setup).unwrap();
+            let _json = serde_json::to_string(&view).unwrap();
+        })
+    });
+}
+
+/// Mirrors `get_table_view` body: table-only payload.
+fn bench_ipc_get_table_view_4files(c: &mut Criterion) {
+    let paths = list_gdx(&examples_dir());
+    if paths.len() < 4 {
+        return;
+    }
+    let files = load_all(&paths);
+    let mut setup = DisplaySetup::for_symbol("ykali");
+    setup.x_dim = 0;
+    let setup = refine_setup(&files, &setup).unwrap();
+    c.bench_function("ipc_get_table_view_4files", |b| {
+        b.iter(|| {
+            let clones: Vec<LoadedFile> = files.to_vec();
+            let view = build_table(&clones, &setup).unwrap();
+            let _json = serde_json::to_string(&view).unwrap();
+        })
+    });
+}
+
 criterion_group!(
     benches,
     bench_ipc_common_symbols_4files,
     bench_ipc_common_symbols_19files,
     bench_ipc_distinct_keys_4files,
     bench_ipc_get_view_4files,
+    bench_ipc_get_chart_view_4files,
+    bench_ipc_get_table_view_4files,
 );
 criterion_main!(benches);

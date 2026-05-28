@@ -1,12 +1,12 @@
 import { useMemo } from "react";
 import Plotly from "plotly.js-dist-min";
 import createPlotlyComponent from "react-plotly.js/factory";
-import type { PlotView } from "../types";
+import type { ChartView as ChartViewData } from "../types";
 
 const Plot = createPlotlyComponent(Plotly);
 
 interface Props {
-  view: PlotView;
+  view: ChartViewData;
   showZero: boolean;
   unit?: string | null;
   conversionFactor?: number;

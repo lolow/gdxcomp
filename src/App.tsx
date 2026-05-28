@@ -7,7 +7,15 @@ import { FileBar } from "./components/FileBar";
 import { FilterPanel } from "./components/FilterPanel";
 import { MappingPanel } from "./components/MappingPanel";
 import { SymbolPicker } from "./components/SymbolPicker";
-import type { AppMode, DisplaySetup, FileMeta, PlotView, Session, SymbolMeta } from "./types";
+import type {
+  AppMode,
+  ChartView as ChartViewData,
+  DisplaySetup,
+  FileMeta,
+  Session,
+  SymbolMeta,
+  TableView as TableViewData,
+} from "./types";
 import { defaultSetup } from "./types";
 
 const WITCH_SYMBOLS = new Set(["Q", "Q_EMI", "Q_FUEL", "I", "I_EN"]);
@@ -28,7 +36,8 @@ export function App() {
   const [files, setFiles] = useState<FileMeta[]>([]);
   const [symbols, setSymbols] = useState<SymbolMeta[]>([]);
   const [setup, setSetup] = useState<DisplaySetup | null>(null);
-  const [view, setView] = useState<PlotView | null>(null);
+  const [chartView, setChartView] = useState<ChartViewData | null>(null);
+  const [tableView, setTableView] = useState<TableViewData | null>(null);
   const [loading, setLoading] = useState(false);
   const [tab, setTab] = useState<"chart" | "table">("chart");
   const [showZero, setShowZero] = useState(true);
@@ -73,28 +82,50 @@ export function App() {
     [symbols, setup],
   );
 
+  // Lazy table fetch: only when the user is on the table tab AND we don't
+  // have a cached TableView for the current setup. Cleared by the chart
+  // refresh effect whenever setup changes.
+  useEffect(() => {
+    if (tab !== "table" || tableView || !setup?.symbol || files.length === 0) return;
+    let cancelled = false;
+    api
+      .getTableView(setup)
+      .then((tv) => {
+        if (!cancelled) setTableView(tv);
+      })
+      .catch((e) => {
+        if (!cancelled) setError(String(e));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [tab, setup, files, tableView]);
+
   // Auto-refresh chart 400 ms after any setup or file change.
+  // Invalidates the cached table view so the next tab switch refetches.
   useEffect(() => {
     if (!setup?.symbol || files.length === 0) {
-      setView(null);
+      setChartView(null);
+      setTableView(null);
       setLoading(false);
       return;
     }
     let cancelled = false;
+    setTableView(null);
     const timer = setTimeout(() => {
       setLoading(true);
       api
-        .getView(setup)
+        .getChartView(setup)
         .then(({ view: v }) => {
           if (!cancelled) {
-            setView(v);
+            setChartView(v);
             setError(null);
             setLoading(false);
           }
         })
         .catch((e) => {
           if (!cancelled) {
-            setView(null);
+            setChartView(null);
             setError(String(e));
             setLoading(false);
           }
@@ -139,7 +170,8 @@ export function App() {
       await api.clearFiles();
       setFiles([]);
       setSetup(null);
-      setView(null);
+      setChartView(null);
+      setTableView(null);
     } catch (e) {
       setError(String(e));
     }
@@ -196,7 +228,8 @@ export function App() {
       if (tIdx >= 0) s = { ...s, xDim: tIdx };
     }
     setSetup(s);
-    setView(null);
+    setChartView(null);
+    setTableView(null);
   }
 
   function patchSetup(patch: Partial<DisplaySetup>) {
@@ -399,19 +432,23 @@ export function App() {
           </div>
         )}
         <div className="plot-wrap">
-          {view
-            ? tab === "chart" ? <ChartView view={view} showZero={showZero} unit={displayUnit} conversionFactor={conversionFactor} /> : <DataTable view={view} />
-            : !loading && (
-              <div className="empty">
-                {files.length === 0
-                  ? savedSession
-                    ? null
-                    : "Add one or more GDX files to begin."
-                  : !setup?.symbol
-                    ? "Pick a symbol to plot."
-                    : null}
-              </div>
-            )
+          {tab === "chart"
+            ? chartView
+              ? <ChartView view={chartView} showZero={showZero} unit={displayUnit} conversionFactor={conversionFactor} />
+              : !loading && (
+                <div className="empty">
+                  {files.length === 0
+                    ? savedSession
+                      ? null
+                      : "Add one or more GDX files to begin."
+                    : !setup?.symbol
+                      ? "Pick a symbol to plot."
+                      : null}
+                </div>
+              )
+            : tableView
+              ? <DataTable view={tableView} />
+              : !loading && <div className="empty">Loading table…</div>
           }
           {loading && (
             <div className="loading-overlay">

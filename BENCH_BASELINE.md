@@ -59,6 +59,11 @@ opt-level=3, strip="symbols").
 | 1.5 | ipc_common_symbols_19files | 27.99 ms | name_index O(1); **−90.2% (10× faster)** |
 | 1.5 | ipc_distinct_keys_4files | 12.23 ms | within noise |
 | 1.5 | ipc_get_view_4files | 16.76 ms | within noise |
+| 5.1 | ipc_get_view_4files | 5.480 ms | -67% from cumulative cache + name_index |
+| 5.1 | ipc_get_chart_view_4files | 3.770 ms | **−31% vs ipc_get_view_4files (chart-only payload)** |
+| 5.1 | ipc_get_table_view_4files | 3.830 ms | table-only payload, fetched lazily on tab switch |
+| 5.1 | ipc_distinct_keys_4files | 37.28 µs | -99.7% (cache + name_index in action) |
+| 5.1 | ipc_common_symbols_19files | 25.11 ms | -91% vs Phase-0 |
 
 ## Frontend bundle (`./scripts/bundle-size.sh`)
 

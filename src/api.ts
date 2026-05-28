@@ -5,9 +5,11 @@ import { invoke } from "@tauri-apps/api/core";
 import type {
   DisplaySetup,
   FileMeta,
+  GetChartResult,
   GetViewResult,
   Session,
   SymbolMeta,
+  TableView,
 } from "./types";
 
 export const api = {
@@ -34,6 +36,12 @@ export const api = {
   },
   getView(setup: DisplaySetup): Promise<GetViewResult> {
     return invoke("get_view", { setup });
+  },
+  getChartView(setup: DisplaySetup): Promise<GetChartResult> {
+    return invoke("get_chart_view", { setup });
+  },
+  getTableView(setup: DisplaySetup): Promise<TableView> {
+    return invoke("get_table_view", { setup });
   },
   renameScenario(path: string, scenario: string): Promise<FileMeta[]> {
     return invoke("rename_scenario", { path, scenario });

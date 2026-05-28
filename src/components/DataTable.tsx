@@ -1,8 +1,8 @@
 import { useMemo, useState } from "react";
-import type { PlotView, TableRow } from "../types";
+import type { TableRow, TableView } from "../types";
 
 interface Props {
-  view: PlotView;
+  view: TableView;
 }
 
 type SortKey = { col: number; dir: 1 | -1 };

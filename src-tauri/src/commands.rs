@@ -10,7 +10,8 @@ use std::path::PathBuf;
 use std::sync::Mutex;
 
 use gdxcomp_core::{
-    build_view, common_symbols, refine_setup, DisplaySetup, LoadedFile, PlotView, SymbolMeta,
+    build_chart, build_table, build_view, common_symbols, refine_setup, ChartView, DisplaySetup,
+    LoadedFile, PlotView, SymbolMeta, TableView,
 };
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Manager, State};
@@ -319,24 +320,57 @@ pub fn distinct_keys(symbol: String, dim: usize, state: State<AppState>) -> Vec<
     out
 }
 
-#[tauri::command]
-pub fn get_view(setup: DisplaySetup, state: State<AppState>) -> CmdResult<GetViewResult> {
-    let entries = state.entries.lock().unwrap();
-    // Use scenario as the trace label by overriding file.label before the call.
-    let files: Vec<LoadedFile> = entries
+/// Files snapshot where each LoadedFile's label is rewritten to the scenario
+/// name. Used by all view commands so traces are labelled per scenario.
+fn scenario_files(entries: &[FileEntry]) -> Vec<LoadedFile> {
+    entries
         .iter()
         .map(|e| {
             let mut f = e.file.clone();
             f.label = e.scenario.clone();
             f
         })
-        .collect();
+        .collect()
+}
+
+#[tauri::command]
+pub fn get_view(setup: DisplaySetup, state: State<AppState>) -> CmdResult<GetViewResult> {
+    let entries = state.entries.lock().unwrap();
+    let files = scenario_files(&entries);
     let effective = refine_setup(&files, &setup).map_err(|e| e.to_string())?;
     let view = build_view(&files, &effective).map_err(|e| e.to_string())?;
     Ok(GetViewResult {
         view,
         setup: effective,
     })
+}
+
+/// Chart-only payload. Cheaper IPC for the chart tab (typical case).
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GetChartResult {
+    pub view: ChartView,
+    pub setup: DisplaySetup,
+}
+
+#[tauri::command]
+pub fn get_chart_view(setup: DisplaySetup, state: State<AppState>) -> CmdResult<GetChartResult> {
+    let entries = state.entries.lock().unwrap();
+    let files = scenario_files(&entries);
+    let effective = refine_setup(&files, &setup).map_err(|e| e.to_string())?;
+    let view = build_chart(&files, &effective).map_err(|e| e.to_string())?;
+    Ok(GetChartResult {
+        view,
+        setup: effective,
+    })
+}
+
+#[tauri::command]
+pub fn get_table_view(setup: DisplaySetup, state: State<AppState>) -> CmdResult<TableView> {
+    let entries = state.entries.lock().unwrap();
+    let files = scenario_files(&entries);
+    let effective = refine_setup(&files, &setup).map_err(|e| e.to_string())?;
+    build_table(&files, &effective).map_err(|e| e.to_string())
 }
 
 // ---------------------------------------------------------------------------
