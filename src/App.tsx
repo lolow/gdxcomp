@@ -87,6 +87,22 @@ export function App() {
     [symbols, setup],
   );
 
+  // When mode transitions GDX → WITCH (either via the manual toggle or via
+  // auto-detection in syncFromBackend), snap the x-axis to the "t"
+  // dimension if the current symbol has one. selectSymbol() already does
+  // this on symbol selection; this effect covers the case where a symbol
+  // is already loaded when WITCH mode is found/activated.
+  const prevModeRef = useRef(mode);
+  useEffect(() => {
+    const prev = prevModeRef.current;
+    prevModeRef.current = mode;
+    if (prev === "witch" || mode !== "witch" || !currentSymbol || !setup) return;
+    const tIdx = currentSymbol.domains.indexOf("t");
+    if (tIdx >= 0 && setup.xDim !== tIdx) {
+      patchSetup({ xDim: tIdx });
+    }
+  }, [mode, currentSymbol]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Lazy table fetch: only when the user is on the table tab AND we don't
   // have a cached TableView for the current setup. Cleared by the chart
   // refresh effect whenever setup changes.

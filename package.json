@@ -1,6 +1,6 @@
 {
   "name": "gdxcomp",
-  "version": "0.0.7",
+  "version": "0.0.8",
   "description": "Plot and compare GAMS GDX files",
   "license": "MIT",
   "type": "module",

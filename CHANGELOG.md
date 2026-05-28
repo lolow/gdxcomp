@@ -8,6 +8,33 @@ All notable changes are documented here. Versions follow [semver](https://semver
 
 ---
 
+## [0.0.8] — 2026-05-28
+
+### Added
+- Unit conversion `GtC ↔ GtCO2e` (×44/12) for carbon mass — applies whenever
+  the unit contains `GtC` (word-boundary regex; `GtCe`/`GtCO2`/`GtCH4` are
+  unaffected).
+- Unit conversion `GTonC ↔ GtCO2e` (×44/12) for the verbose form
+  (case-insensitive).
+- Unit conversion `GtCe ↔ GtCO2e` (×44/12) — always applicable when the
+  unit contains `GtCe`, independent of any e-dimension filter.
+- Multiple unit conversions may now stack as toolbar buttons. Example:
+  with `e=co2*` filter + `GtCe/yr`, the toolbar shows
+  `GtCe/yr | GtCO2e/yr | Gt/yr` (each carries its own factor).
+- WITCH mode now auto-snaps the x-axis to the `t` (year) dimension when
+  WITCH is activated or auto-detected, if the current symbol has a `t`
+  domain. Matches the behaviour already in `selectSymbol` for symbol
+  changes.
+- About dialog now shows the release codename and date inline with the
+  version: `gdxcomp 0.0.8 (birding — 2026-05-28)`.
+
+### Fixed
+- `@testing-library/dom` is now an explicit dev dependency, fixing the
+  Intel-Mac `npm run tauri build` failure reported in #1 (TS2305 on the
+  `screen` re-export from RTL v16).
+
+---
+
 ## [0.0.7] — 2026-05-28
 
 ### Performance sweep
