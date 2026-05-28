@@ -36,6 +36,14 @@ opt-level=3, strip="symbols").
 | 2.1-3 | distinct_keys_dim0_ykali | 68.80 µs | **−96.8% (32×)** |
 | 2.1-3 | distinct_keys_dim0_19files | 1.284 ms | **−96.8% (30×)** |
 | 2.1-3 | build_view_aggregated_4files | 800.5 µs | **−92%** (vs 10.58 ms baseline) |
+| 2.4 | read_records_ykali | 37.33 µs | -38% vs 2.1-3 (Arc reused) |
+| 2.4 | build_view_ykali | 164.0 µs | -20% vs 2.1-3 |
+| 2.4 | refine_and_build_view_ykali | 176.0 µs | -18% vs 2.1-3 |
+| 2.4 | read_records_largest_symbol | 203.9 ms | unchanged (public API still clones; Phase 3a may help) |
+| 2.4 | distinct_keys_dim0_ykali | 8.856 µs | **−87% vs 2.1-3, −99.6% vs Phase 0 (252× faster overall)** |
+| 2.4 | distinct_keys_dim0_19files | 183.4 µs | **−85% vs 2.1-3, −99.5% vs Phase 0 (213× faster overall)** |
+| 2.4 | build_view_aggregated_4files | 574.2 µs | -28% vs 2.1-3 |
+| 2.4 | build_view_2dim_aggregated_4files | 12.62 µs | **−99.9% vs Phase 0 (710× faster on cached path)** |
 | 0 | build_view_aggregated_4files | 10.58 ms | dim_agg=Sum on non-x dim |
 | 0 | build_view_2dim_aggregated_4files | 8.962 ms | picked `allerr` (dim=3), 2 agg dims |
 

@@ -166,12 +166,13 @@ impl LoadedFile {
     /// Distinct UEL labels appearing in dimension `dim` of `symbol`, in first-seen order.
     ///
     /// Uses a HashSet for O(1) membership against the borrowed key strings,
-    /// keeping a parallel Vec for stable first-seen ordering.
+    /// keeping a parallel Vec for stable first-seen ordering. Borrows directly
+    /// from the cached `Arc<Vec<Rec>>` so cache hits incur no record clone.
     pub fn distinct_keys(&self, symbol: &str, dim: usize) -> Result<Vec<String>> {
-        let records = self.read_records(symbol)?;
+        let records = self.read_records_arc(symbol)?;
         let mut seen: HashSet<&str> = HashSet::new();
         let mut order: Vec<String> = Vec::new();
-        for rec in &records {
+        for rec in records.iter() {
             if let Some(k) = rec.keys.get(dim) {
                 if seen.insert(k.as_str()) {
                     order.push(k.clone());

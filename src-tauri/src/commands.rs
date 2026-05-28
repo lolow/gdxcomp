@@ -383,11 +383,11 @@ pub fn load_session(app: AppHandle) -> Option<Session> {
 pub fn read_param_map(symbol: String, state: State<AppState>) -> HashMap<String, f64> {
     let entries = state.entries.lock().unwrap();
     for e in entries.iter() {
-        if let Ok(records) = e.file.read_records(&symbol) {
+        if let Ok(records) = e.file.read_records_arc(&symbol) {
             let map: HashMap<String, f64> = records
-                .into_iter()
+                .iter()
                 .filter_map(|r| {
-                    let key = r.keys.into_iter().next()?;
+                    let key = r.keys.first().cloned()?;
                     let val = r.values[0];
                     val.is_finite().then_some((key, val))
                 })

@@ -168,8 +168,8 @@ pub fn build_view(files: &[LoadedFile], setup: &DisplaySetup) -> Result<PlotView
         if file.symbol(&setup.symbol).is_none() {
             continue;
         }
-        let records = file.read_records(&setup.symbol)?;
-        for rec in &records {
+        let records = file.read_records_arc(&setup.symbol)?;
+        for rec in records.iter() {
             if !passes_filters(rec, setup) {
                 continue;
             }

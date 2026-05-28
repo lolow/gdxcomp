@@ -16,11 +16,11 @@ impl YearMapper {
     pub fn new(files: &[LoadedFile]) -> Self {
         for file in files {
             if let Some(sym) = file.symbols.iter().find(|s| s.name == "year" && s.dim == 1) {
-                if let Ok(records) = file.read_records(&sym.name) {
+                if let Ok(records) = file.read_records_arc(&sym.name) {
                     let explicit: HashMap<String, f64> = records
-                        .into_iter()
+                        .iter()
                         .filter_map(|r| {
-                            let key = r.keys.into_iter().next()?;
+                            let key = r.keys.first().cloned()?;
                             let val = r.values[0];
                             val.is_finite().then_some((key, val))
                         })
