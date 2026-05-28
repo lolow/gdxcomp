@@ -38,8 +38,8 @@ export function ChartView({ view, showZero, unit, conversionFactor = 1 }: Props)
   const layout = {
     autosize: true,
     margin: { l: 64, r: 16, t: 24, b: 64 },
-    xaxis: { title: { text: view.xLabel }, type: xAxisType, automargin: true },
-    yaxis: { title: { text: yTitle }, automargin: true, rangemode },
+    xaxis: { title: { text: view.xLabel }, type: xAxisType, automargin: true, autorange: true },
+    yaxis: { title: { text: yTitle }, automargin: true, rangemode, autorange: true },
     legend: { orientation: "h", y: -0.2 },
     font: { family: "system-ui, sans-serif", size: 12 },
     paper_bgcolor: "transparent",
@@ -50,13 +50,24 @@ export function ChartView({ view, showZero, unit, conversionFactor = 1 }: Props)
     return <div className="empty">No data for the current filters.</div>;
   }
 
+  // Revision increments only when something Plotly actually has to redraw —
+  // never on incidental parent re-renders. Without this, a unit toggle that
+  // only changes y (new array, same x ref) can leave Plotly's internal axis
+  // state desynced and render the x axis at -1..6 instead of the year range.
+  const revision = useRevision(view, conversionFactor, showZero, yTitle);
+
   return (
     <Plot
       data={data as never}
       layout={layout as never}
+      revision={revision}
       config={{ displaylogo: false, responsive: true } as never}
       useResizeHandler
       style={{ width: "100%", height: "100%" }}
     />
   );
+}
+
+function useRevision(...keys: unknown[]): number {
+  return useMemo(() => Date.now(), keys); // eslint-disable-line react-hooks/exhaustive-deps
 }
