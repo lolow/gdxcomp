@@ -8,6 +8,18 @@ All notable changes are documented here. Versions follow [semver](https://semver
 
 ---
 
+## [0.0.9] — 2026-05-28
+
+### Fixed
+- Chart x-axis (and y-axis on the second toggle) could render against a
+  stale Plotly axis-range cache after switching units — the axis would
+  drop to `-1..6` instead of the actual year range. The `<Plot>`
+  element now uses a React `key` derived from `(symbol, unit,
+  conversionFactor)`, forcing a full remount on unit change so Plotly
+  reinitializes cleanly. Both axes also pin `autorange: true`.
+
+---
+
 ## [0.0.8] — 2026-05-28
 
 ### Added
