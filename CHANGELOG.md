@@ -8,6 +8,14 @@ All notable changes are documented here. Versions follow [semver](https://semver
 
 ---
 
+## [0.0.6] — 2026-05-28
+
+### Added
+- About dialog (click "gdxcomp" in the header): shows version, author, and
+  pixel art witch hat easter egg.
+
+---
+
 ## [0.0.5] — 2026-05-27
 
 ### Added
