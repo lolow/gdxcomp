@@ -26,6 +26,16 @@ opt-level=3, strip="symbols").
 | 1.1 | distinct_keys_dim0_ykali | 2.087 ms | HashSet+Vec; -6% on low-K |
 | 1.1 | distinct_keys_dim0_19files | 39.81 ms | unchanged (outer accumulator dominates) |
 | 1.5 | (no change to load_and_view benches) | — | name_index targets common_symbols path |
+| 2.1-3 | open_metadata | 3.019 ms | -7% (noise) |
+| 2.1-3 | read_records_ykali | 60.87 µs | **−97.8% (45× faster)** — cache hit after warmup |
+| 2.1-3 | build_view_ykali | 207.0 µs | **−91.5% (14.5×)** still has Vec<Rec> clone; 2.4 closes the gap |
+| 2.1-3 | refine_and_build_view_ykali | 201.6 µs | **−92.9%** |
+| 2.1-3 | open_metadata_4files | 16.82 ms | +20% — Mutex<LruCache> alloc per open |
+| 2.1-3 | open_metadata_19files | 72.15 ms | +28% — same cause |
+| 2.1-3 | read_records_largest_symbol | 200.4 ms | -19% — limited by Vec<Rec> clone of large symbol |
+| 2.1-3 | distinct_keys_dim0_ykali | 68.80 µs | **−96.8% (32×)** |
+| 2.1-3 | distinct_keys_dim0_19files | 1.284 ms | **−96.8% (30×)** |
+| 2.1-3 | build_view_aggregated_4files | 800.5 µs | **−92%** (vs 10.58 ms baseline) |
 | 0 | build_view_aggregated_4files | 10.58 ms | dim_agg=Sum on non-x dim |
 | 0 | build_view_2dim_aggregated_4files | 8.962 ms | picked `allerr` (dim=3), 2 agg dims |
 

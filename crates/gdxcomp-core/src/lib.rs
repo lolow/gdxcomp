@@ -5,6 +5,7 @@
 //! - [`build_view`] turns a [`DisplaySetup`] into a [`PlotView`] (chart traces + table).
 //! - [`DisplaySetup`] is the serializable display configuration (JSON import/export).
 
+mod cache;
 mod compare;
 mod error;
 mod model;

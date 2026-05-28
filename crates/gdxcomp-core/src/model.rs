@@ -1,9 +1,11 @@
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 
 use gdx::{GdxFile, SymbolType};
 use serde::{Deserialize, Serialize};
 
+use crate::cache::RecordCache;
 use crate::error::Result;
 
 /// Serializable mirror of [`gdx::SymbolType`].
@@ -59,13 +61,31 @@ pub struct Rec {
 /// Record data is read from disk on demand via [`read_records`](LoadedFile::read_records).
 /// Because the GDX library opens and closes fast, we reopen for each read rather
 /// than keeping an open handle (handles are not `Send`).
-#[derive(Debug, Clone)]
+/// Clones share the same path/symbols metadata and the same record cache.
+/// The `Arc<RecordCache>` is the reason `Clone` is hand-written rather than
+/// derived: cloning a `LoadedFile` must reuse the cache so the second copy
+/// benefits from reads the first one warmed.
+#[derive(Debug)]
 pub struct LoadedFile {
     pub label: String,
     pub path: PathBuf,
     pub symbols: Vec<SymbolMeta>,
     /// Name → index into `symbols`. Built at open time for O(1) lookup.
     name_index: HashMap<String, usize>,
+    /// Shared bounded LRU. Sized via `GDXCOMP_RECORD_CACHE_SIZE` (default 32).
+    cache: Arc<RecordCache>,
+}
+
+impl Clone for LoadedFile {
+    fn clone(&self) -> Self {
+        Self {
+            label: self.label.clone(),
+            path: self.path.clone(),
+            symbols: self.symbols.clone(),
+            name_index: self.name_index.clone(),
+            cache: Arc::clone(&self.cache),
+        }
+    }
 }
 
 impl LoadedFile {
@@ -103,6 +123,7 @@ impl LoadedFile {
             path,
             symbols,
             name_index,
+            cache: Arc::new(RecordCache::new()),
         })
     }
 
@@ -110,11 +131,22 @@ impl LoadedFile {
         self.name_index.get(name).map(|&i| &self.symbols[i])
     }
 
-    /// Read all records for `symbol` from disk.
+    /// Read all records for `symbol`, going through the per-file LRU cache.
     ///
-    /// Opens and closes the GDX file on every call. This is cheap because the
-    /// library is fast and the symbol table is cached in the file header.
+    /// Hits a warm cache without re-opening the GDX file. Misses fall through
+    /// to a fresh FFI read; the resulting `Arc<Vec<Rec>>` is stored for reuse.
+    pub fn read_records_arc(&self, symbol: &str) -> Result<Arc<Vec<Rec>>> {
+        self.cache.get_or_insert(symbol, || self.read_records_uncached(symbol))
+    }
+
+    /// Read all records for `symbol`. Convenience wrapper that clones from
+    /// the cached `Arc<Vec<Rec>>`; prefer [`read_records_arc`] when the
+    /// caller can take a borrowed/shared view.
     pub fn read_records(&self, symbol: &str) -> Result<Vec<Rec>> {
+        self.read_records_arc(symbol).map(|arc| (*arc).clone())
+    }
+
+    fn read_records_uncached(&self, symbol: &str) -> Result<Vec<Rec>> {
         let file = GdxFile::open(&self.path)?;
         match file.symbol(symbol) {
             Some(info) => {
