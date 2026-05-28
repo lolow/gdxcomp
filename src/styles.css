@@ -345,23 +345,20 @@ label.field > span {
 }
 
 .about-modal {
-  width: 480px;
+  width: 300px;
   text-align: center;
 }
 .about-body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
-  padding: 16px;
+  gap: 12px;
+  padding: 20px 16px;
 }
-.about-ascii {
-  font-family: monospace;
-  font-size: 12px;
-  line-height: 1.4;
-  color: var(--accent);
-  margin: 0;
-  user-select: none;
+.about-image {
+  width: 120px;
+  height: 120px;
+  image-rendering: pixelated;
 }
 .about-info {
   font-size: 13px;
