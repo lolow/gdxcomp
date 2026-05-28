@@ -6,6 +6,10 @@ All notable changes are documented here. Versions follow [semver](https://semver
 
 ## [Unreleased]
 
+---
+
+## [0.0.7] — 2026-05-28
+
 ### Performance sweep
 
 Measured improvements (see `BENCH_BASELINE.md` for full numbers). All
