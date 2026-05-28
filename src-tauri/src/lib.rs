@@ -21,6 +21,7 @@ pub fn run() {
             commands::open_folder,
             commands::remove_gdx,
             commands::clear_files,
+            commands::reload_files,
             commands::list_files,
             commands::common_symbols_cmd,
             commands::distinct_keys,

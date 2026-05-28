@@ -8,6 +8,16 @@ All notable changes are documented here. Versions follow [semver](https://semver
 
 ---
 
+## [0.0.10] — 2026-05-28
+
+### Added
+- "Reload all" button (↻) in the Files toolbar, next to the open-folder
+  button. Re-reads every currently loaded GDX file from disk and refreshes
+  the symbol list. Disabled (dimmed) when no files are loaded. Useful when
+  a GAMS run updates a GDX in place.
+
+---
+
 ## [0.0.9] — 2026-05-28
 
 ### Fixed

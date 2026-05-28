@@ -10,9 +10,10 @@ interface Props {
   onRename: (path: string, scenario: string) => void;
   onResetScenarios: () => void;
   onClearFiles: () => void;
+  onReloadFiles: () => void;
 }
 
-export function FileBar({ files, onOpen, onOpenFolder, onRemove, onRename, onResetScenarios, onClearFiles }: Props) {
+export function FileBar({ files, onOpen, onOpenFolder, onRemove, onRename, onResetScenarios, onClearFiles, onReloadFiles }: Props) {
   const [modalOpen, setModalOpen] = useState(false);
 
   async function pick() {
@@ -46,6 +47,15 @@ export function FileBar({ files, onOpen, onOpenFolder, onRemove, onRename, onRes
         </button>
         <button className="primary" onClick={pickFolder} title="Open all GDX files in a folder">
           📁
+        </button>
+        <button
+          className="primary"
+          onClick={onReloadFiles}
+          disabled={files.length === 0}
+          title="Reload all GDX files from disk"
+          style={{ opacity: files.length === 0 ? 0.4 : 1 }}
+        >
+          ↻
         </button>
       </div>
       <button className="files-count" onClick={() => setModalOpen(true)}>

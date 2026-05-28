@@ -272,6 +272,16 @@ pub fn clear_files(state: State<AppState>) -> Vec<FileMeta> {
 }
 
 #[tauri::command]
+pub fn reload_files(state: State<AppState>) -> CmdResult<Vec<FileMeta>> {
+    let mut entries = state.entries.lock().unwrap();
+    for entry in entries.iter_mut() {
+        entry.file = LoadedFile::open(&entry.file.path)
+            .map_err(|e| format!("{}: {e}", entry.file.path.display()))?;
+    }
+    Ok(snapshot(&entries))
+}
+
+#[tauri::command]
 pub fn list_files(state: State<AppState>) -> Vec<FileMeta> {
     let entries = state.entries.lock().unwrap();
     snapshot(&entries)

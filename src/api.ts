@@ -25,6 +25,9 @@ export const api = {
   clearFiles(): Promise<FileMeta[]> {
     return invoke("clear_files");
   },
+  reloadFiles(): Promise<FileMeta[]> {
+    return invoke("reload_files");
+  },
   listFiles(): Promise<FileMeta[]> {
     return invoke("list_files");
   },
