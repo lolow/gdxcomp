@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api } from "./api";
 import { AboutDialog } from "./components/AboutDialog";
 import { ChartView } from "./components/ChartView";
@@ -103,11 +103,30 @@ export function App() {
 
   // Auto-refresh chart 400 ms after any setup or file change.
   // Invalidates the cached table view so the next tab switch refetches.
+  // Skips refetch when only `mode` changed and the symbol has no `t` dim
+  // (mode only affects year mapping on `t`).
+  const prevSetupRef = useRef<DisplaySetup | null>(null);
   useEffect(() => {
     if (!setup?.symbol || files.length === 0) {
       setChartView(null);
       setTableView(null);
       setLoading(false);
+      prevSetupRef.current = setup;
+      return;
+    }
+    const prev = prevSetupRef.current;
+    prevSetupRef.current = setup;
+    if (
+      prev &&
+      currentSymbol &&
+      !currentSymbol.domains.includes("t") &&
+      prev.mode !== setup.mode &&
+      prev.symbol === setup.symbol &&
+      prev.field === setup.field &&
+      prev.xDim === setup.xDim &&
+      JSON.stringify(prev.filters) === JSON.stringify(setup.filters) &&
+      JSON.stringify(prev.dimAgg) === JSON.stringify(setup.dimAgg)
+    ) {
       return;
     }
     let cancelled = false;
