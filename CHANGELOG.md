@@ -6,6 +6,50 @@ All notable changes are documented here. Versions follow [semver](https://semver
 
 ## [Unreleased]
 
+### Performance sweep
+
+Measured improvements (see `BENCH_BASELINE.md` for full numbers). All
+changes are bench-justified; deferred items are documented inline.
+
+#### Backend (Rust)
+- Tuned `[profile.release]` (lto=fat, codegen-units=1, opt-level=3,
+  strip=symbols) for both workspaces; `[profile.bench]` inherits release.
+- `LoadedFile::distinct_keys` switched to `HashSet<&str> + Vec` (O(N²) → O(N)
+  in the inner loop).
+- O(1) symbol lookup: `name_index: HashMap<String, usize>` on `LoadedFile`
+  and `GdxFile`. `ipc_common_symbols_19files`: **287 ms → 25 ms (11×)**.
+- Bounded LRU record cache (`crates/gdxcomp-core/src/cache.rs`,
+  `Mutex<LruCache<String, Arc<Vec<Rec>>>>`) shared via `Arc<RecordCache>`
+  across `LoadedFile` clones. Capacity from `GDXCOMP_RECORD_CACHE_SIZE`
+  (default 32). `build_view_aggregated_4files`: **10.58 ms → 574 µs (18×)**.
+- `build_view`, `distinct_keys`, `YearMapper::new`, `read_param_map` now
+  iterate `Arc<Vec<Rec>>` directly — no per-call deep clone.
+- New `build_chart` / `build_table` + commands `get_chart_view` /
+  `get_table_view`. Chart-tab IPC payload **−31%** (3.77 ms vs 5.48 ms).
+
+#### Frontend
+- Switched `plotly.js-dist-min` → `plotly.js-basic-dist-min`. Bundle **4.86 MB
+  → 1.30 MB (−73%)**.
+- Vite `manualChunks` + `React.lazy(ChartView)` + Suspense. Main-entry JS
+  **4.86 MB → 159 kB (30×)** for first paint; Plotly fetched in parallel
+  when the chart tab activates.
+- Lazy table fetch on tab switch (was: every setup change sent the full
+  table). Cached client-side; invalidated on setup change.
+- Skip chart refetch on mode-only toggle when the current symbol has no
+  `t` dimension.
+- Client-side `distinctKeys` cache by `(symbol, dim)`, invalidated when
+  the loaded-file set changes.
+- Stable `DataTable` row keys so sort/filter doesn't churn React fibers.
+
+#### Tooling
+- Added `BENCH_BASELINE.md` with criterion median wall-clock for every
+  bench; rows appended per phase, never overwritten.
+- New `crates/gdxcomp-core/benches/ipc_loopback.rs` mirrors the Tauri
+  command bodies (including `serde_json::to_string`).
+- Extended `load_and_view.rs` with multi-file and pathological cases
+  (4 / 19 files, largest-symbol, distinct-keys 19-files, aggregated builds).
+- `scripts/bundle-size.sh` captures the frontend baseline.
+
 ---
 
 ## [0.0.6] — 2026-05-28
