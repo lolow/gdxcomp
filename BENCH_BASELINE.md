@@ -122,6 +122,39 @@ multi-file accumulator (`out.contains(&k)` in `commands.rs:308` and in the
 bench) is a separate O(K²) layer not addressed by Phase 1.1 and is what makes
 `_19files` net-flat in the table above.
 
+### Cumulative wins (Phase 0 → end of sweep)
+
+Backend, criterion median wall-clock:
+
+| bench | Phase 0 | end | speedup |
+|---|---|---|---|
+| distinct_keys_dim0_ykali        |  2.230 ms |   8.86 µs | **252×** |
+| distinct_keys_dim0_19files      | 39.14 ms  | 183.4 µs  | **213×** |
+| build_view_ykali                |  3.002 ms | 164.0 µs  | **18×**  |
+| build_view_aggregated_4files    | 10.58 ms  | 574.2 µs  | **18×**  |
+| build_view_2dim_aggregated_4files| 8.962 ms |  12.62 µs | **710×** |
+| ipc_common_symbols_4files       | 29.36 ms  |   4.785 ms| **6×**   |
+| ipc_common_symbols_19files      | 286.8 ms  |  25.11 ms | **11×**  |
+| ipc_get_view_4files             | 16.08 ms  |   5.48 ms | **3×**   |
+| ipc_get_chart_view_4files       |    —      |   3.77 ms | new, **−31% vs full view** |
+
+Frontend bundle:
+
+| asset | Phase 0 | end | reduction |
+|---|---|---|---|
+| main entry JS         | 4,856,322 | 158,863  | **97% smaller (30×)** |
+| plotly chunk (lazy)   |    —      | 1,134,996| split off |
+| total dist            | 4.7 MB    | 1.3 MB   | **−73%** |
+
+Memory footprint: per-file overhead grew by `Mutex<LruCache>` allocation
+(~750 µs/open), bounded by the record cache (capacity 32 by default,
+configurable via `GDXCOMP_RECORD_CACHE_SIZE`). Real-world session sees
+~tens of MB of cached records, far below the theoretical worst case.
+
+Phases applied: 0, 1.1, 1.5, 2.1–2.3, 2.4, 4.1, 4.2, 4.4, 4.5, 5.1, 5.2.
+Phases deferred (each documented in the sections below): 1.2, 1.3, 1.4,
+3a, 4.3.
+
 ### Phase 3a deferred (no measurable target)
 
 Cold-cache FFI per-record cost (`buf_to_string` × dim × records) is what
