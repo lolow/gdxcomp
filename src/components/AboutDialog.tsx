@@ -24,11 +24,11 @@ export function AboutDialog({ onClose }: Props) {
         <div className="modal-body about-body">
           <img src={witchHat} alt="witch hat" className="about-image" />
           <div className="about-info">
-            <strong>gdxcomp</strong>{version && <> &nbsp;v{version}</>}
+            <strong>gdxcomp</strong>
+            {version && <> {version}</>}
+            {" "}<span className="about-release">({RELEASE_NAME} — {RELEASE_DATE})</span>
             <br />
             <span className="about-tagline">Plot &amp; compare GAMS GDX files</span>
-            <br /><br />
-            <span className="about-release">“{RELEASE_NAME}” — {RELEASE_DATE}</span>
             <br /><br />
             Author: <strong>Laurent Drouet</strong>
           </div>
