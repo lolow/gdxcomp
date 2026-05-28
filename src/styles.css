@@ -369,6 +369,11 @@ label.field > span {
   color: var(--muted);
   font-size: 12px;
 }
+.about-release {
+  color: var(--muted);
+  font-size: 12px;
+  font-style: italic;
+}
 
 .files-table {
   width: 100%;

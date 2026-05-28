@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { getVersion } from "@tauri-apps/api/app";
 import witchHat from "../assets/witch-hat.png";
+import { RELEASE_DATE, RELEASE_NAME } from "../release";
 
 interface Props {
   onClose: () => void;
@@ -26,6 +27,8 @@ export function AboutDialog({ onClose }: Props) {
             <strong>gdxcomp</strong>{version && <> &nbsp;v{version}</>}
             <br />
             <span className="about-tagline">Plot &amp; compare GAMS GDX files</span>
+            <br /><br />
+            <span className="about-release">“{RELEASE_NAME}” — {RELEASE_DATE}</span>
             <br /><br />
             Author: <strong>Laurent Drouet</strong>
           </div>
