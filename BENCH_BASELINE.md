@@ -1,0 +1,75 @@
+# gdxcomp benchmark baselines
+
+Numbers captured per phase of the performance sweep
+(see `/home/lolow/.claude/plans/i-would-like-to-smooth-twilight.md`).
+Each row records criterion median wall-clock and short context. Commits should
+append rows, never overwrite — drift over time is more informative than the
+latest point.
+
+Hardware reference: Fedora 44 / Linux 7.0.9 / Intel Xe iGPU. Compiled with
+`[profile.bench] inherits = "release"` (so lto="fat", codegen-units=1,
+opt-level=3, strip="symbols").
+
+## Rust core benches (`cargo bench -p gdxcomp-core --bench load_and_view`)
+
+| phase | bench | median | note |
+|---|---|---|---|
+| 0 | open_metadata | 3.249 ms | single 18 MB file, metadata only |
+| 0 | read_records_ykali | 2.686 ms | 2-dim parameter |
+| 0 | build_view_ykali | 3.002 ms | refined setup, 1 file |
+| 0 | refine_and_build_view_ykali | 2.705 ms | refine + build, 1 file |
+| 0 | open_metadata_4files | 13.96 ms | 4 files in gdx_examples/ |
+| 0 | open_metadata_19files | 56.51 ms | 4 + 15 files (~278 MB total) |
+| 0 | read_records_largest_symbol | 247.4 ms | picked `ABAT_CLASS` from ssp2_bau_devel |
+| 0 | distinct_keys_dim0_ykali | 2.230 ms | proves O(N²) Vec::contains is small here |
+| 0 | distinct_keys_dim0_19files | 39.14 ms | multi-file accumulator (`Vec::contains` x2) |
+| 0 | build_view_aggregated_4files | 10.58 ms | dim_agg=Sum on non-x dim |
+| 0 | build_view_2dim_aggregated_4files | 8.962 ms | picked `allerr` (dim=3), 2 agg dims |
+
+## IPC-loopback benches (`cargo bench -p gdxcomp-core --bench ipc_loopback`)
+
+| phase | bench | median | note |
+|---|---|---|---|
+| 0 | ipc_common_symbols_4files | 29.36 ms | clone files + intersect + serde_json |
+| 0 | ipc_common_symbols_19files | 286.8 ms | the clone chain dominates |
+| 0 | ipc_distinct_keys_4files | 11.11 ms | per-file scan + dedupe + JSON |
+| 0 | ipc_get_view_4files | 16.08 ms | refine + build + JSON of full PlotView |
+
+## Frontend bundle (`./scripts/bundle-size.sh`)
+
+| phase | asset | bytes | note |
+|---|---|---|---|
+| 0 | dist/assets/index-*.js | 4,856,322 | plotly.js-dist-min, ≈ 93% of bundle |
+| 0 | dist/assets/index-*.css | 10,958 | |
+| 0 | dist total | ~4.7 MB | |
+
+---
+
+## How to fill these in
+
+```sh
+cargo bench -p gdxcomp-core --bench load_and_view
+cargo bench -p gdxcomp-core --bench ipc_loopback
+./scripts/bundle-size.sh
+```
+
+Criterion writes detailed HTML to `target/criterion/*/report/index.html`.
+The number that lives here is the **median** reported on the summary line
+(middle value of the `[lo med hi]` triple).
+
+---
+
+## Phase-0 observations
+
+- `read_records_largest_symbol` (247 ms for `ABAT_CLASS`) is the slowest hot
+  path; per-record `Vec<String>` allocation in `reader.rs:194` is the main
+  suspect → Phase 3a target.
+- `ipc_common_symbols_19files` (287 ms) is dominated by the `Vec<LoadedFile>`
+  clone of 19 files × 100+ SymbolMeta each → Phase 1.5 (name index) helps
+  symbol lookup; metadata snapshot path could also stop cloning.
+- `distinct_keys_dim0_19files` (39 ms) vs `distinct_keys_dim0_ykali` (2.2 ms)
+  shows the multi-file accumulator's outer `Vec::contains` is the heavier
+  knob → Phase 1.1 fixes both layers.
+- `build_view_aggregated_4files` (10.6 ms) — Phase 1.2 (`IndexSet` x_order)
+  and Phase 1.3 (`IndexMap` FileGroup) will move the needle once symbol size
+  grows; `ykali` per-file is small so the O(N²) is not yet dominant.

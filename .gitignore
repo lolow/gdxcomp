@@ -17,4 +17,8 @@ dist-ssr
 
 # Local GDX example files (large binaries, not versioned)
 gdx_examples/
+gdx_examples_more/
 *.gdx
+
+# Claude Code local config
+.claude/

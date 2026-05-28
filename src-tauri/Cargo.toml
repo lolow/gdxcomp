@@ -27,3 +27,12 @@ gdxcomp-core = { path = "../crates/gdxcomp-core" }
 [features]
 # Enabled by `tauri dev`/`build` to allow CSP relaxation etc. via Tauri.
 custom-protocol = ["tauri/custom-protocol"]
+
+[profile.release]
+lto = "fat"
+codegen-units = 1
+opt-level = 3
+strip = "symbols"
+
+[profile.bench]
+inherits = "release"

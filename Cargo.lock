@@ -283,6 +283,7 @@ version = "0.0.1"
 dependencies = [
  "criterion",
  "gdx",
+ "indexmap",
  "serde",
  "serde_json",
  "tempfile",
