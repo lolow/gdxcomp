@@ -110,6 +110,17 @@ multi-file accumulator (`out.contains(&k)` in `commands.rs:308` and in the
 bench) is a separate O(K²) layer not addressed by Phase 1.1 and is what makes
 `_19files` net-flat in the table above.
 
+### Phase 3a deferred (no measurable target)
+
+Cold-cache FFI per-record cost (`buf_to_string` × dim × records) is what
+Phase 3a targets. But after Phase 2 the cache absorbs ~all repeat reads,
+and the bench `read_records_largest_symbol` (200 ms) is dominated by the
+**deep `Vec<Rec>` clone** in the public `read_records()` API — not by FFI.
+All internal callers use `read_records_arc()` (no clone), so the FFI
+cost only shows up on first-symbol-load latency, which the current
+benches can't isolate. Will revisit if a first-paint-latency bench
+appears (e.g. via a Tauri startup-time hyperfine).
+
 ### Phase 1.2 deferred (not applied)
 
 Tried `IndexSet<String>` for `x_order` in `build_view`:
