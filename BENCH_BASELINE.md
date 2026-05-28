@@ -23,6 +23,8 @@ opt-level=3, strip="symbols").
 | 0 | read_records_largest_symbol | 247.4 ms | picked `ABAT_CLASS` from ssp2_bau_devel |
 | 0 | distinct_keys_dim0_ykali | 2.230 ms | proves O(N²) Vec::contains is small here |
 | 0 | distinct_keys_dim0_19files | 39.14 ms | multi-file accumulator (`Vec::contains` x2) |
+| 1.1 | distinct_keys_dim0_ykali | 2.087 ms | HashSet+Vec; -6% on low-K |
+| 1.1 | distinct_keys_dim0_19files | 39.81 ms | unchanged (outer accumulator dominates) |
 | 0 | build_view_aggregated_4files | 10.58 ms | dim_agg=Sum on non-x dim |
 | 0 | build_view_2dim_aggregated_4files | 8.962 ms | picked `allerr` (dim=3), 2 agg dims |
 
@@ -73,3 +75,14 @@ The number that lives here is the **median** reported on the summary line
 - `build_view_aggregated_4files` (10.6 ms) — Phase 1.2 (`IndexSet` x_order)
   and Phase 1.3 (`IndexMap` FileGroup) will move the needle once symbol size
   grows; `ykali` per-file is small so the O(N²) is not yet dominant.
+
+### Phase 1.1 note
+
+The plan predicted "p50 drop ≥ 5× on symbols with >1k distinct keys" — neither
+`ykali` (~30 distinct years) nor any cheap-to-bench symbol in the corpus hits
+that K. The HashSet+Vec change is algorithmically correct (O(N²)→O(N)) and
+shows a small (-6%) win on `ykali`; the >5× win would only materialize on a
+high-K symbol (e.g. one with thousands of distinct UELs in a dim). Outer
+multi-file accumulator (`out.contains(&k)` in `commands.rs:308` and in the
+bench) is a separate O(K²) layer not addressed by Phase 1.1 and is what makes
+`_19files` net-flat in the table above.

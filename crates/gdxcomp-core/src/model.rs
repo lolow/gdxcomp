@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 
 use gdx::{GdxFile, SymbolType};
@@ -122,16 +123,20 @@ impl LoadedFile {
     }
 
     /// Distinct UEL labels appearing in dimension `dim` of `symbol`, in first-seen order.
+    ///
+    /// Uses a HashSet for O(1) membership against the borrowed key strings,
+    /// keeping a parallel Vec for stable first-seen ordering.
     pub fn distinct_keys(&self, symbol: &str, dim: usize) -> Result<Vec<String>> {
         let records = self.read_records(symbol)?;
-        let mut seen: Vec<String> = Vec::new();
+        let mut seen: HashSet<&str> = HashSet::new();
+        let mut order: Vec<String> = Vec::new();
         for rec in &records {
             if let Some(k) = rec.keys.get(dim) {
-                if !seen.contains(k) {
-                    seen.push(k.clone());
+                if seen.insert(k.as_str()) {
+                    order.push(k.clone());
                 }
             }
         }
-        Ok(seen)
+        Ok(order)
     }
 }
