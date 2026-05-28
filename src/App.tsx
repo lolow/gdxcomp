@@ -317,71 +317,63 @@ export function App() {
   // When the symbol or base unit changes, reset any manual unit choice.
   useEffect(() => { setUnitChoice(null); }, [currentUnit]);
 
-  // Unit toggle: e=co2* → GtCe→Gt (×44/12); e=ch4* → GtCe→Mt (×1000/gwp).
-  const { unitOptions, conversionFactor: unitConversionFactor } = useMemo(() => {
-    if (!currentUnit || !currentSymbol || !setup || mode === "gdx") {
-      return { unitOptions: null, conversionFactor: 1 };
-    }
+  // Unit conversions. Multiple may apply at once (e.g. GtCe with e=co2 gives
+  // both Gt/yr and GtCO2e/yr as targets); we accumulate all matches as
+  // `{label, factor}` options. The first option is always the base unit.
+  const unitOptions = useMemo<{ label: string; factor: number }[] | null>(() => {
+    if (!currentUnit || !currentSymbol || !setup || mode === "gdx") return null;
+
+    const opts: { label: string; factor: number }[] = [{ label: currentUnit, factor: 1 }];
+    const push = (label: string, factor: number) => {
+      if (opts.some((o) => o.label === label)) return;
+      opts.push({ label, factor });
+    };
 
     // Carbon price: T$/GtonCe ↔ $/tCO2 (×1000×12/44)
     if (/T\$.*[Gg]ton[Cc]/i.test(currentUnit)) {
-      return {
-        unitOptions: [currentUnit, "$/tCO2"],
-        conversionFactor: 1000 * 12 / 44,
-      };
+      push("$/tCO2", (1000 * 12) / 44);
     }
 
-    // Energy: TWh ↔ EJ (1 TWh = 3.6e-3 EJ)
+    // Energy: TWh ↔ EJ
     if (currentUnit.includes("TWh")) {
-      return {
-        unitOptions: [currentUnit, currentUnit.replace("TWh", "EJ")],
-        conversionFactor: 3.6 / 1000,
-      };
+      push(currentUnit.replace("TWh", "EJ"), 3.6 / 1000);
     }
 
-    // Mass of carbon: GtC ↔ GtCO2e (×44/12). Word-boundary regex so the
-    // pattern matches "GtC/yr" / "GtC" but not "GtCe", "GtCO2", "GtCH4".
+    // Mass of carbon: GtC ↔ GtCO2e (×44/12). Word boundaries so we don't
+    // match GtCe / GtCO2 / GtCH4.
     if (/\bGtC\b/.test(currentUnit)) {
-      return {
-        unitOptions: [currentUnit, currentUnit.replace(/\bGtC\b/, "GtCO2e")],
-        conversionFactor: 44 / 12,
-      };
+      push(currentUnit.replace(/\bGtC\b/, "GtCO2e"), 44 / 12);
     }
 
-    // Emissions: Ce-based units require an e-dimension filter
-    if (!currentUnit.includes("Ce")) return { unitOptions: null, conversionFactor: 1 };
+    // Carbon equivalent: GtCe ↔ GtCO2e (×44/12). Always applicable when
+    // the unit contains GtCe; e-dim specific options below stack on top.
+    if (/GtCe/.test(currentUnit)) {
+      push(currentUnit.replace(/GtCe/, "GtCO2e"), 44 / 12);
+    }
+
+    // Emissions specific to the filtered e-dim value(s).
     const eDim = currentSymbol.domains.indexOf("e");
-    if (eDim < 0) return { unitOptions: null, conversionFactor: 1 };
-    const eFilter = setup.filters[String(eDim)];
-    if (!eFilter || eFilter.length === 0) return { unitOptions: null, conversionFactor: 1 };
+    const eFilter = eDim >= 0 ? setup.filters[String(eDim)] : undefined;
+    if (currentUnit.includes("Ce") && eFilter && eFilter.length > 0) {
+      if (eFilter.every((v) => v.toLowerCase().startsWith("co2"))) {
+        push(currentUnit.replace(/GtCe/, "Gt"), 44 / 12);
+      } else if (eFilter.every((v) => v.toLowerCase().startsWith("ch4"))) {
+        // AR4 GWP default for CH4 = 25.
+        const gwp = emiGwp[eFilter[0]] ?? 25;
+        push(currentUnit.replace(/GtCe/, "Mt"), ((44 / 12) * 1000) / gwp);
+      } else if (eFilter.every((v) => v.toLowerCase().startsWith("n2o"))) {
+        // AR4 GWP default for N2O = 298.
+        const gwp = emiGwp[eFilter[0]] ?? 298;
+        push(currentUnit.replace(/GtCe/, "Mt"), ((44 / 12) * 1000) / gwp);
+      }
+    }
 
-    if (eFilter.every((v) => v.toLowerCase().startsWith("co2"))) {
-      return {
-        unitOptions: [currentUnit, currentUnit.replace(/GtCe/, "Gt")],
-        conversionFactor: 44 / 12,
-      };
-    }
-    if (eFilter.every((v) => v.toLowerCase().startsWith("ch4"))) {
-      // Look up GWP for the first filtered e value; fall back to AR4 default (25).
-      const gwp = emiGwp[eFilter[0]] ?? 25;
-      return {
-        unitOptions: [currentUnit, currentUnit.replace(/GtCe/, "Mt")],
-        conversionFactor: (44 / 12) * 1000 / gwp,
-      };
-    }
-    if (eFilter.every((v) => v.toLowerCase().startsWith("n2o"))) {
-      // AR4 GWP default for N2O = 298.
-      const gwp = emiGwp[eFilter[0]] ?? 298;
-      return {
-        unitOptions: [currentUnit, currentUnit.replace(/GtCe/, "Mt")],
-        conversionFactor: (44 / 12) * 1000 / gwp,
-      };
-    }
-    return { unitOptions: null, conversionFactor: 1 };
+    return opts.length > 1 ? opts : null;
   }, [currentUnit, currentSymbol, setup, emiGwp]);
 
-  const displayUnit = unitOptions ? (unitChoice ?? unitOptions[0]) : currentUnit;
-  const conversionFactor = unitOptions && displayUnit === unitOptions[1] ? unitConversionFactor : 1;
+  const displayUnit = unitOptions ? (unitChoice ?? unitOptions[0].label) : currentUnit;
+  const conversionFactor =
+    unitOptions?.find((o) => o.label === displayUnit)?.factor ?? 1;
 
   return (
     <div className="app" style={{ gridTemplateColumns: gridCols }}>
@@ -450,8 +442,8 @@ export function App() {
           {tab === "chart" && displayUnit && (
             unitOptions ? (
               <div className="toggle-group unit-toggle">
-                {unitOptions.map((u) => (
-                  <button key={u} className={displayUnit === u ? "on" : ""} onClick={() => setUnitChoice(u)}>{u}</button>
+                {unitOptions.map((o) => (
+                  <button key={o.label} className={displayUnit === o.label ? "on" : ""} onClick={() => setUnitChoice(o.label)}>{o.label}</button>
                 ))}
               </div>
             ) : (
