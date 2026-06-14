@@ -1,3 +1,5 @@
+use std::collections::{HashMap, HashSet};
+
 use serde::Serialize;
 
 use crate::error::{CoreError, Result};
@@ -112,16 +114,15 @@ impl From<PlotView> for TableView {
     }
 }
 
-/// Chart-only build. Computes the same internal scan as [`build_view`] but
-/// returns a slim payload (no table rows). Use when the UI is on the chart
-/// tab; pair with [`build_table`] on tab switch.
+/// Chart-only build. Skips table-row collection for a cheaper IPC payload.
+/// Use when the UI is on the chart tab; pair with [`build_table`] on tab switch.
 pub fn build_chart(files: &[LoadedFile], setup: &DisplaySetup) -> Result<ChartView> {
-    Ok(build_view(files, setup)?.into())
+    Ok(build_internal(files, setup, false)?.into())
 }
 
 /// Table-only build. Companion to [`build_chart`].
 pub fn build_table(files: &[LoadedFile], setup: &DisplaySetup) -> Result<TableView> {
-    Ok(build_view(files, setup)?.into())
+    Ok(build_internal(files, setup, true)?.into())
 }
 
 /// Symbols present with the same dimension and kind in *every* file. Sorted by name.
@@ -173,6 +174,10 @@ pub fn refine_setup(files: &[LoadedFile], setup: &DisplaySetup) -> Result<Displa
 /// Build the chart + table for `setup` across the given files.
 /// Each file produces exactly one trace. Call [`refine_setup`] first.
 pub fn build_view(files: &[LoadedFile], setup: &DisplaySetup) -> Result<PlotView> {
+    build_internal(files, setup, true)
+}
+
+fn build_internal(files: &[LoadedFile], setup: &DisplaySetup, want_table: bool) -> Result<PlotView> {
     let meta = files
         .iter()
         .find_map(|f| f.symbol(&setup.symbol))
@@ -216,6 +221,18 @@ pub fn build_view(files: &[LoadedFile], setup: &DisplaySetup) -> Result<PlotView
         .next()
         .unwrap_or(DimAgg::Sum);
 
+    // Precompute filter sets once — O(1) lookup per record vs O(F) Vec::contains.
+    let filter_sets: HashMap<usize, HashSet<&str>> = setup
+        .filters
+        .iter()
+        .filter(|(d, v)| !v.is_empty() && !setup.dim_agg.contains_key(*d))
+        .map(|(d, v)| (*d, v.iter().map(String::as_str).collect()))
+        .collect();
+
+    // Only collect raw table rows when the caller wants a table and there is no
+    // aggregation (aggregated table is built from traces after the loop).
+    let collect_raw = want_table && !needs_agg;
+
     let mut x_order: Vec<String> = Vec::new();
     let mut groups: Vec<FileGroup> = Vec::new();
     let mut raw_table: Vec<TableRow> = Vec::new();
@@ -226,7 +243,7 @@ pub fn build_view(files: &[LoadedFile], setup: &DisplaySetup) -> Result<PlotView
         }
         let records = file.read_records_arc(&setup.symbol)?;
         for rec in records.iter() {
-            if !passes_filters(rec, setup) {
+            if !passes_filters(rec, &filter_sets) {
                 continue;
             }
             let value = rec.values[setup.field.index()];
@@ -238,16 +255,18 @@ pub fn build_view(files: &[LoadedFile], setup: &DisplaySetup) -> Result<PlotView
             }
             group_for(&mut groups, fi).push(x, value);
 
-            // Apply year mapping to the x-dim key in the table row too.
-            let mut keys = rec.keys.clone();
-            if let Some(k) = keys.get_mut(setup.x_dim) {
-                *k = year_str(k);
+            if collect_raw {
+                // Apply year mapping to the x-dim key in the table row too.
+                let mut keys: Vec<String> = rec.keys.iter().map(|k| k.to_string()).collect();
+                if let Some(k) = keys.get_mut(setup.x_dim) {
+                    *k = year_str(k);
+                }
+                raw_table.push(TableRow {
+                    file: file.label.clone(),
+                    keys,
+                    value,
+                });
             }
-            raw_table.push(TableRow {
-                file: file.label.clone(),
-                keys,
-                value,
-            });
         }
     }
 
@@ -285,7 +304,7 @@ pub fn build_view(files: &[LoadedFile], setup: &DisplaySetup) -> Result<PlotView
     // When aggregating, the table mirrors the chart: one row per (file, x) with
     // the aggregated value. Each non-x dim is labelled with its agg method or
     // filter value so every column stays aligned with the header.
-    let table: Vec<TableRow> = if needs_agg {
+    let table: Vec<TableRow> = if needs_agg && want_table {
         let ndim = meta.dim;
         traces
             .iter()
@@ -373,17 +392,14 @@ fn axis_label(meta: &SymbolMeta, dim_names: &[String], dim: usize) -> String {
 fn x_key(rec: &Rec, x_dim: usize) -> String {
     rec.keys
         .get(x_dim)
-        .cloned()
+        .map(|k| k.to_string())
         .unwrap_or_else(|| "value".to_string())
 }
 
-fn passes_filters(rec: &Rec, setup: &DisplaySetup) -> bool {
-    setup.filters.iter().all(|(dim, allowed)| {
-        if allowed.is_empty() || setup.dim_agg.contains_key(dim) {
-            return true;
-        }
-        rec.keys.get(*dim).is_some_and(|k| allowed.contains(k))
-    })
+fn passes_filters(rec: &Rec, filter_sets: &HashMap<usize, HashSet<&str>>) -> bool {
+    filter_sets
+        .iter()
+        .all(|(dim, allowed)| rec.keys.get(*dim).is_some_and(|k| allowed.contains(k.as_ref())))
 }
 
 struct FileGroup {

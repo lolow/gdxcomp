@@ -73,7 +73,7 @@ fn bench_ipc_common_symbols_19files(c: &mut Criterion) {
     });
 }
 
-/// Mirrors `distinct_keys` body: per-file scan + Vec::contains accumulator + JSON.
+/// Mirrors `distinct_keys` body: per-file scan + HashSet dedup + JSON.
 fn bench_ipc_distinct_keys_4files(c: &mut Criterion) {
     let paths = list_gdx(&examples_dir());
     if paths.len() < 4 {
@@ -82,11 +82,11 @@ fn bench_ipc_distinct_keys_4files(c: &mut Criterion) {
     let files = load_all(&paths);
     c.bench_function("ipc_distinct_keys_4files", |b| {
         b.iter(|| {
+            let mut seen = std::collections::HashSet::new();
             let mut out: Vec<String> = Vec::new();
             for f in &files {
-                let keys = f.distinct_keys("ykali", 0).unwrap_or_default();
-                for k in keys {
-                    if !out.contains(&k) {
+                for k in f.distinct_keys("ykali", 0).unwrap_or_default() {
+                    if seen.insert(k.clone()) {
                         out.push(k);
                     }
                 }

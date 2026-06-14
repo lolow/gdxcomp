@@ -46,6 +46,17 @@ opt-level=3, strip="symbols").
 | 2.4 | build_view_2dim_aggregated_4files | 12.62 µs | **−99.9% vs Phase 0 (710× faster on cached path)** |
 | 0 | build_view_aggregated_4files | 10.58 ms | dim_agg=Sum on non-x dim |
 | 0 | build_view_2dim_aggregated_4files | 8.962 ms | picked `allerr` (dim=3), 2 agg dims |
+| 6.0 | open_metadata | 5.961 ms | pre-sweep-2 baseline (Fedora 44 / Linux 7.0.11) |
+| 6.0 | read_records_ykali | 103.5 µs | pre-sweep-2 baseline |
+| 6.0 | build_view_ykali | 267.0 µs | pre-sweep-2 baseline |
+| 6.0 | refine_and_build_view_ykali | 270.1 µs | pre-sweep-2 baseline |
+| 6.0 | open_metadata_4files | 32.77 ms | pre-sweep-2 baseline |
+| 6.0 | open_metadata_19files | 132.1 ms | pre-sweep-2 baseline |
+| 6.0 | read_records_largest_symbol | 366.1 ms | pre-sweep-2 baseline (ABAT_CLASS) |
+| 6.0 | distinct_keys_dim0_ykali | 15.23 µs | pre-sweep-2 baseline |
+| 6.0 | distinct_keys_dim0_19files | 336.8 µs | pre-sweep-2 baseline |
+| 6.0 | build_view_aggregated_4files | 1.028 ms | pre-sweep-2 baseline |
+| 6.0 | build_view_2dim_aggregated_4files | 22.98 µs | pre-sweep-2 baseline |
 
 ## IPC-loopback benches (`cargo bench -p gdxcomp-core --bench ipc_loopback`)
 
@@ -64,6 +75,12 @@ opt-level=3, strip="symbols").
 | 5.1 | ipc_get_table_view_4files | 3.830 ms | table-only payload, fetched lazily on tab switch |
 | 5.1 | ipc_distinct_keys_4files | 37.28 µs | -99.7% (cache + name_index in action) |
 | 5.1 | ipc_common_symbols_19files | 25.11 ms | -91% vs Phase-0 |
+| 6.0 | ipc_common_symbols_4files | 8.437 ms | pre-sweep-2 baseline (Fedora 44 / Linux 7.0.11) |
+| 6.0 | ipc_common_symbols_19files | 53.45 ms | pre-sweep-2 baseline |
+| 6.0 | ipc_distinct_keys_4files | 56.85 µs | pre-sweep-2 baseline |
+| 6.0 | ipc_get_view_4files | 8.565 ms | pre-sweep-2 baseline |
+| 6.0 | ipc_get_chart_view_4files | 8.542 ms | pre-sweep-2 baseline (≈ ipc_get_view — no skip yet) |
+| 6.0 | ipc_get_table_view_4files | 8.553 ms | pre-sweep-2 baseline |
 
 ## Frontend bundle (`./scripts/bundle-size.sh`)
 

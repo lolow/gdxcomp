@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use gdx_sys as ffi;
 
 /// The kind of a GDX symbol.
@@ -100,13 +102,16 @@ pub struct SymbolInfo {
     pub domains: Vec<String>,
 }
 
-/// One data record: `keys.len() == dim` string indices, plus five value fields.
+/// One data record: `keys.len() == dim` interned key labels, plus five value fields.
+///
+/// Keys are `Arc<str>` so that many records sharing the same UEL label (common in
+/// large symbols) all point to a single allocation rather than duplicating strings.
 ///
 /// Special GDX values are mapped to `f64`: Undefined/NA → `NaN`,
 /// ±Infinity → `f64::INFINITY`/`NEG_INFINITY`, EPS → `0.0`.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Record {
-    pub keys: Vec<String>,
+    pub keys: Vec<Arc<str>>,
     pub values: [f64; ffi::GMS_VAL_MAX],
 }
 

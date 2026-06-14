@@ -49,10 +49,10 @@ pub struct SymbolMeta {
     pub domains: Vec<String>,
 }
 
-/// One data record: `keys.len() == dim` indices plus the five value fields.
+/// One data record: `keys.len() == dim` interned labels plus the five value fields.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Rec {
-    pub keys: Vec<String>,
+    pub keys: Vec<Arc<str>>,
     pub values: [f64; 5],
 }
 
@@ -174,8 +174,8 @@ impl LoadedFile {
         let mut order: Vec<String> = Vec::new();
         for rec in records.iter() {
             if let Some(k) = rec.keys.get(dim) {
-                if seen.insert(k.as_str()) {
-                    order.push(k.clone());
+                if seen.insert(k.as_ref()) {
+                    order.push(k.to_string());
                 }
             }
         }

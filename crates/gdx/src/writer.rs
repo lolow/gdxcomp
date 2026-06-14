@@ -84,7 +84,7 @@ impl GdxWriter {
                 let ckeys: Vec<CString> = rec
                     .keys
                     .iter()
-                    .map(|k| CString::new(k.as_str()).unwrap_or_default())
+                    .map(|k| CString::new(&**k).unwrap_or_default())
                     .collect();
                 let keyptrs: Vec<*const c_char> = ckeys.iter().map(|k| k.as_ptr()).collect();
                 if ffi::c__gdxdatawritestr(self.obj, keyptrs.as_ptr(), rec.values.as_ptr()) == 0 {

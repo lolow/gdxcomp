@@ -124,4 +124,28 @@ extern "C" {
     pub fn c__gdxgetlasterror(obj: *mut GdxObj) -> c_int;
     /// Human-readable message for error number `errnr`.
     pub fn c__gdxerrorstr(obj: *mut GdxObj, errnr: c_int, errmsg: *mut c_char) -> c_int;
+
+    /// Begin reading symbol `synr` in raw (integer-key) mode; sets `nrecs`.
+    /// Keys arrive as 1-based global UEL indices; use [`c__gdxumuelget`] to resolve them.
+    pub fn c__gdxdatareadrawstart(obj: *mut GdxObj, synr: c_int, nrecs: *mut c_int) -> c_int;
+    /// Read one record in raw mode: fills `keyint` (array of `dim` UEL indices) and `values[5]`.
+    /// Returns 1 while records remain, 0 when exhausted.
+    pub fn c__gdxdatareadraw(
+        obj: *mut GdxObj,
+        keyint: *mut c_int,
+        values: *mut c_double,
+        dimfrst: *mut c_int,
+    ) -> c_int;
+
+    /// UEL count and highest mapped index for the open file.
+    pub fn c__gdxumuelinfo(obj: *mut GdxObj, uelcnt: *mut c_int, highmap: *mut c_int) -> c_int;
+    /// Resolve UEL number `uelnr` to its label string.
+    /// Writes into `uel` (caller provides [`GMS_SSSIZE`] buffer); sets `uelmap`.
+    /// Returns 1 on success, 0 if `uelnr` is out of range.
+    pub fn c__gdxumuelget(
+        obj: *mut GdxObj,
+        uelnr: c_int,
+        uel: *mut c_char,
+        uelmap: *mut c_int,
+    ) -> c_int;
 }

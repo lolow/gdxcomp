@@ -2,15 +2,18 @@
 
 use std::path::{Path, PathBuf};
 
+use std::sync::Arc;
+
 use gdx::{GdxWriter, Record, SymbolType};
 use gdxcomp_core::{
-    build_view, common_symbols, DimAgg, DisplaySetup, Field, LoadedFile, SymbolKind,
+    build_chart, build_table, build_view, common_symbols, DimAgg, DisplaySetup, Field, LoadedFile,
+    SymbolKind,
 };
 use tempfile::TempDir;
 
 fn par(keys: &[&str], v: f64) -> Record {
     Record {
-        keys: keys.iter().map(|s| s.to_string()).collect(),
+        keys: keys.iter().map(|s| Arc::from(*s)).collect(),
         values: [v, 0.0, 0.0, 0.0, 0.0],
     }
 }
@@ -175,6 +178,51 @@ fn display_setup_json_roundtrips() {
     let json = setup.to_json().unwrap();
     let back = DisplaySetup::from_json(&json).unwrap();
     assert_eq!(setup, back);
+}
+
+#[test]
+fn build_chart_traces_match_build_view_agg() {
+    let (_d, files) = two_files();
+    let mut setup = DisplaySetup::for_symbol("c");
+    setup.x_dim = 0;
+    setup.dim_agg.insert(1, DimAgg::Sum);
+    let view = build_view(&files, &setup).unwrap();
+    let chart = build_chart(&files, &setup).unwrap();
+    assert_eq!(chart.traces, view.traces);
+    assert_eq!(chart.dim_names, view.dim_names);
+}
+
+#[test]
+fn build_chart_traces_match_build_view_no_agg() {
+    let (_d, files) = two_files();
+    let mut setup = DisplaySetup::for_symbol("c");
+    setup.x_dim = 0;
+    let view = build_view(&files, &setup).unwrap();
+    let chart = build_chart(&files, &setup).unwrap();
+    assert_eq!(chart.traces, view.traces);
+    assert_eq!(chart.dim_names, view.dim_names);
+}
+
+#[test]
+fn build_table_matches_build_view_no_agg() {
+    let (_d, files) = two_files();
+    let mut setup = DisplaySetup::for_symbol("c");
+    setup.x_dim = 0;
+    let view = build_view(&files, &setup).unwrap();
+    let tbl = build_table(&files, &setup).unwrap();
+    assert_eq!(tbl.table, view.table);
+    assert_eq!(tbl.dim_names, view.dim_names);
+}
+
+#[test]
+fn build_table_matches_build_view_agg() {
+    let (_d, files) = two_files();
+    let mut setup = DisplaySetup::for_symbol("c");
+    setup.x_dim = 0;
+    setup.dim_agg.insert(1, DimAgg::Sum);
+    let view = build_view(&files, &setup).unwrap();
+    let tbl = build_table(&files, &setup).unwrap();
+    assert_eq!(tbl.table, view.table);
 }
 
 #[test]
