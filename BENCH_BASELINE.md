@@ -57,6 +57,19 @@ opt-level=3, strip="symbols").
 | 6.0 | distinct_keys_dim0_19files | 336.8 µs | pre-sweep-2 baseline |
 | 6.0 | build_view_aggregated_4files | 1.028 ms | pre-sweep-2 baseline |
 | 6.0 | build_view_2dim_aggregated_4files | 22.98 µs | pre-sweep-2 baseline |
+| 6.end | open_metadata | 4.153 ms | **−30% vs 6.0** (raw-mode UEL scan on open) |
+| 6.end | read_records_ykali | 32.60 µs | **−68% vs 6.0** (Arc<str> raw-mode reader) |
+| 6.end | build_view_ykali | 78.53 µs | **−71% vs 6.0** |
+| 6.end | refine_and_build_view_ykali | 87.44 µs | **−68% vs 6.0** |
+| 6.end | open_metadata_4files | 26.59 ms | **−19% vs 6.0** |
+| 6.end | open_metadata_19files | 112.0 ms | **−15% vs 6.0** |
+| 6.end | read_records_largest_symbol | 125.2 ms | **−66% vs 6.0** (raw-mode; ABAT_CLASS ~3M records) |
+| 6.end | cold_read_largest_symbol | 167.1 ms | new bench: GdxFile::open per iter (no cache) |
+| 6.end | distinct_keys_dim0_ykali | 11.10 µs | **−27% vs 6.0** |
+| 6.end | distinct_keys_dim0_19files | 241.6 µs | **−28% vs 6.0** |
+| 6.end | build_view_aggregated_4files | 309.5 µs | **−70% vs 6.0** (skip-table + Arc<str>) |
+| 6.end | build_chart_aggregated_4files | 428.1 µs | new bench: skip-table path (chart-only) |
+| 6.end | build_view_2dim_aggregated_4files | 5.361 µs | **−77% vs 6.0** |
 
 ## IPC-loopback benches (`cargo bench -p gdxcomp-core --bench ipc_loopback`)
 
@@ -81,6 +94,12 @@ opt-level=3, strip="symbols").
 | 6.0 | ipc_get_view_4files | 8.565 ms | pre-sweep-2 baseline |
 | 6.0 | ipc_get_chart_view_4files | 8.542 ms | pre-sweep-2 baseline (≈ ipc_get_view — no skip yet) |
 | 6.0 | ipc_get_table_view_4files | 8.553 ms | pre-sweep-2 baseline |
+| 6.end | ipc_common_symbols_4files | 5.276 ms | **−37% vs 6.0** (async + lock scoping) |
+| 6.end | ipc_common_symbols_19files | 30.22 ms | **−43% vs 6.0** |
+| 6.end | ipc_distinct_keys_4files | 51.66 µs | within noise (HashSet dedup, small N) |
+| 6.end | ipc_get_view_4files | 5.026 ms | **−41% vs 6.0** (Arc<str> interning + lock scoping) |
+| 6.end | ipc_get_chart_view_4files | 5.059 ms | **−41% vs 6.0** (still ~= get_view; cache warm on 4-file corpus) |
+| 6.end | ipc_get_table_view_4files | 4.925 ms | **−42% vs 6.0** |
 
 ## Frontend bundle (`./scripts/bundle-size.sh`)
 
