@@ -15,6 +15,7 @@ import { SymbolPicker } from "./components/SymbolPicker";
 import type {
   AppMode,
   ChartView as ChartViewData,
+  DimAgg,
   DisplaySetup,
   FileMeta,
   Session,
@@ -30,6 +31,16 @@ function extractUnit(text: string): string | null {
   const matches = text.match(/\[([^\]]+)\]/g);
   if (!matches) return null;
   return matches[matches.length - 1].slice(1, -1);
+}
+
+function isIntensiveUnit(unit: string): boolean {
+  if (/^(%|index|ratio|1|-)$/i.test(unit)) return true;
+  const parts = unit.split('/');
+  if (parts.length < 2) return false;
+  const denom = parts[1].toLowerCase();
+  const qty = ['gj', 'mj', 'tj', 'ej', 'kwh', 'mwh', 'gwh', 'twh',
+    'toe', 'tc', 'tco2', 'gtc', 'gtonc', 'ton', 'cap', 'person'];
+  return qty.some(t => denom.includes(t));
 }
 
 function detectMode(syms: SymbolMeta[]): AppMode {
@@ -402,6 +413,11 @@ export function App() {
     return opts.length > 1 ? opts : null;
   }, [currentUnit, currentSymbol, setup, emiGwp]);
 
+  const defaultAgg = useMemo<DimAgg>(() => {
+    if (!currentUnit) return "sum";
+    return isIntensiveUnit(currentUnit) ? "mean" : "sum";
+  }, [currentUnit]);
+
   const displayUnit = unitOptions ? (unitChoice ?? unitOptions[0].label) : currentUnit;
   const conversionFactor =
     unitOptions?.find((o) => o.label === displayUnit)?.factor ?? 1;
@@ -546,6 +562,7 @@ export function App() {
                 mode={mode}
                 onChange={patchSetup}
                 fetchKeys={fetchKeys}
+                defaultAgg={defaultAgg}
               />
             </>
           ) : (

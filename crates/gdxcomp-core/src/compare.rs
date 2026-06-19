@@ -145,14 +145,39 @@ pub fn common_symbols(files: &[LoadedFile]) -> Vec<SymbolMeta> {
     shared
 }
 
+fn extract_unit(text: &str) -> Option<&str> {
+    let start = text.rfind('[')?;
+    let end = text[start..].find(']').map(|i| start + i)?;
+    Some(&text[start + 1..end])
+}
+
+fn default_dim_agg(text: &str) -> DimAgg {
+    let Some(unit) = extract_unit(text) else {
+        return DimAgg::Sum;
+    };
+    if matches!(unit, "%" | "index" | "ratio" | "1" | "-") {
+        return DimAgg::Mean;
+    }
+    if let Some(denom) = unit.split('/').nth(1) {
+        const QTY: &[&str] = &[
+            "gj", "mj", "tj", "ej", "kwh", "mwh", "gwh", "twh", "w", "toe", "tc", "tco2", "gtc",
+            "gtonc", "ton", "cap", "person",
+        ];
+        let denom_lc = denom.to_ascii_lowercase();
+        if QTY.iter().any(|t| denom_lc.contains(t)) {
+            return DimAgg::Mean;
+        }
+    }
+    DimAgg::Sum
+}
+
 /// Fill in sensible defaults before `build_view`:
-/// - uninitialized non-x dims defaulted to sum aggregation
+/// - uninitialized non-x dims defaulted based on unit (intensive → mean, extensive → sum)
 pub fn refine_setup(files: &[LoadedFile], setup: &DisplaySetup) -> Result<DisplaySetup> {
     let mut refined = setup.clone();
     let first_file = files.iter().find(|f| f.symbol(&setup.symbol).is_some());
     let meta = first_file.and_then(|f| f.symbol(&setup.symbol));
 
-    // Default uninitialized non-x dims to sum aggregation.
     if let Some(m) = meta {
         for d in 0..m.dim {
             if d == setup.x_dim {
@@ -164,7 +189,7 @@ pub fn refine_setup(files: &[LoadedFile], setup: &DisplaySetup) -> Result<Displa
             if setup.dim_agg.contains_key(&d) {
                 continue;
             }
-            refined.dim_agg.insert(d, DimAgg::Sum);
+            refined.dim_agg.insert(d, default_dim_agg(&m.text));
         }
     }
 
