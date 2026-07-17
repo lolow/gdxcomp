@@ -429,6 +429,17 @@ pub fn load_session(app: AppHandle) -> Option<Session> {
 }
 
 // ---------------------------------------------------------------------------
+// Chart image export
+// ---------------------------------------------------------------------------
+
+/// Writes chart PNG bytes to a path the user already chose via the native
+/// save dialog, so no additional filesystem scoping is needed here.
+#[tauri::command]
+pub fn save_chart_image(path: String, data: Vec<u8>) -> CmdResult<()> {
+    fs::write(&path, data).map_err(|e| e.to_string())
+}
+
+// ---------------------------------------------------------------------------
 // Parameter utilities
 // ---------------------------------------------------------------------------
 

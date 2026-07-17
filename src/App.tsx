@@ -333,6 +333,38 @@ export function App() {
     return chips;
   }, [currentSymbol, setup]);
 
+  // Default filename for chart image export: variable name + the mapping
+  // values currently fixing each non-x dimension, underscore-separated.
+  const chartFilenameHint = useMemo(() => {
+    if (!setup) return "chart";
+    const parts = [setup.symbol];
+    if (currentSymbol && (currentSymbol.kind === "variable" || currentSymbol.kind === "equation")) {
+      parts.push(setup.field);
+    }
+    if (currentSymbol) {
+      for (let d = 0; d < currentSymbol.dim; d++) {
+        if (d === setup.xDim) continue;
+        const filterVals = setup.filters[String(d)];
+        if (filterVals && filterVals.length === 1) parts.push(filterVals[0]);
+      }
+    }
+    return parts
+      .map((p) => p.trim().replace(/[^a-zA-Z0-9.-]+/g, "_"))
+      .join("_");
+  }, [currentSymbol, setup]);
+
+  // Default save location for chart image export: same folder as the first
+  // loaded GDX file, so exports land next to the data they came from.
+  const chartDefaultSavePath = useMemo(() => {
+    const filename = `${chartFilenameHint}.png`;
+    const firstPath = files[0]?.path;
+    if (!firstPath) return filename;
+    const sepIdx = Math.max(firstPath.lastIndexOf("/"), firstPath.lastIndexOf("\\"));
+    if (sepIdx < 0) return filename;
+    const sep = firstPath[sepIdx];
+    return `${firstPath.slice(0, sepIdx)}${sep}${filename}`;
+  }, [chartFilenameHint, files]);
+
   const currentUnit = useMemo(() => {
     if (!currentSymbol?.text || !setup) return null;
     if (!UNIT_FIELDS.has(setup.field)) return null;
@@ -509,7 +541,13 @@ export function App() {
             ? chartView
               ? (
                 <Suspense fallback={<div className="loading-overlay"><div className="spinner" /></div>}>
-                  <ChartView view={chartView} showZero={showZero} unit={displayUnit} conversionFactor={conversionFactor} />
+                  <ChartView
+                    view={chartView}
+                    showZero={showZero}
+                    unit={displayUnit}
+                    conversionFactor={conversionFactor}
+                    defaultSavePath={chartDefaultSavePath}
+                  />
                 </Suspense>
               )
               : !loading && (

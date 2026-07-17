@@ -32,6 +32,7 @@ pub fn run() {
             commands::reset_scenarios,
             commands::save_session,
             commands::load_session,
+            commands::save_chart_image,
             commands::read_param_map,
         ])
         .run(tauri::generate_context!())

@@ -1,6 +1,8 @@
 import { useMemo } from "react";
 import Plotly from "plotly.js-basic-dist-min";
 import createPlotlyComponent from "react-plotly.js/factory";
+import { save } from "@tauri-apps/plugin-dialog";
+import { api } from "../api";
 import type { ChartView as ChartViewData } from "../types";
 
 const Plot = createPlotlyComponent(Plotly);
@@ -10,9 +12,21 @@ interface Props {
   showZero: boolean;
   unit?: string | null;
   conversionFactor?: number;
+  defaultSavePath: string;
 }
 
-export function ChartView({ view, showZero, unit, conversionFactor = 1 }: Props) {
+async function saveChartAsPng(gd: unknown, defaultSavePath: string) {
+  const path = await save({
+    defaultPath: defaultSavePath,
+    filters: [{ name: "PNG image", extensions: ["png"] }],
+  });
+  if (!path) return;
+  const dataUrl = await Plotly.toImage(gd as never, { format: "png" });
+  const bytes = Uint8Array.from(atob(dataUrl.split(",")[1]), (c) => c.charCodeAt(0));
+  await api.saveChartImage(path, Array.from(bytes));
+}
+
+export function ChartView({ view, showZero, unit, conversionFactor = 1, defaultSavePath }: Props) {
   const data = useMemo(
     () =>
       view.traces.map((t) => ({
@@ -61,7 +75,28 @@ export function ChartView({ view, showZero, unit, conversionFactor = 1 }: Props)
       key={`${view.symbol}|${unit ?? ""}|${conversionFactor}`}
       data={data as never}
       layout={layout as never}
-      config={{ displaylogo: false, responsive: true } as never}
+      config={{
+        displaylogo: false,
+        responsive: true,
+        // Full override (rather than modeBarButtonsToAdd, which always
+        // appends at the end) so the save button keeps the default
+        // toImage button's original leftmost slot.
+        modeBarButtons: [
+          [
+            {
+              name: "Save chart as PNG…",
+              title: "Save chart as PNG…",
+              icon: Plotly.Icons.camera,
+              click: (gd: unknown) => {
+                saveChartAsPng(gd, defaultSavePath);
+              },
+            },
+          ],
+          ["zoom2d", "pan2d", "select2d", "lasso2d"],
+          ["zoomIn2d", "zoomOut2d", "autoScale2d", "resetScale2d"],
+          ["toggleSpikelines", "hoverClosestCartesian", "hoverCompareCartesian"],
+        ],
+      } as never}
       useResizeHandler
       style={{ width: "100%", height: "100%" }}
     />
