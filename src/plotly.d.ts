@@ -3,6 +3,7 @@
 declare module "plotly.js-basic-dist-min" {
   const Plotly: {
     toImage: (gd: unknown, opts: Record<string, unknown>) => Promise<string>;
+    relayout: (gd: unknown, update: Record<string, unknown>) => Promise<unknown>;
     Icons: Record<string, unknown>;
   };
   export default Plotly;

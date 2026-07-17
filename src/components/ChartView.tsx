@@ -13,20 +13,35 @@ interface Props {
   unit?: string | null;
   conversionFactor?: number;
   defaultSavePath: string;
+  title: string;
 }
 
-async function saveChartAsPng(gd: unknown, defaultSavePath: string) {
+// The title (variable, description, field, mapping) is baked into the
+// exported image only — the on-screen chart already shows the same info in
+// the app's own header, so a persistent Plotly title would duplicate it.
+// It's added just for the toImage capture, then removed again.
+async function saveChartAsPng(gd: unknown, defaultSavePath: string, title: string) {
   const path = await save({
     defaultPath: defaultSavePath,
     filters: [{ name: "PNG image", extensions: ["png"] }],
   });
   if (!path) return;
+  await Plotly.relayout(gd as never, {
+    "title.text": title,
+    "title.font.size": 13,
+    "title.x": 0,
+    "title.xanchor": "left",
+    "title.xref": "paper",
+    "title.yref": "paper",
+    "title.automargin": true,
+  } as never);
   const dataUrl = await Plotly.toImage(gd as never, { format: "png" });
+  await Plotly.relayout(gd as never, { "title.text": "" } as never);
   const bytes = Uint8Array.from(atob(dataUrl.split(",")[1]), (c) => c.charCodeAt(0));
   await api.saveChartImage(path, Array.from(bytes));
 }
 
-export function ChartView({ view, showZero, unit, conversionFactor = 1, defaultSavePath }: Props) {
+export function ChartView({ view, showZero, unit, conversionFactor = 1, defaultSavePath, title }: Props) {
   const data = useMemo(
     () =>
       view.traces.map((t) => ({
@@ -56,8 +71,8 @@ export function ChartView({ view, showZero, unit, conversionFactor = 1, defaultS
     yaxis: { title: { text: yTitle }, automargin: true, rangemode, autorange: true },
     legend: { orientation: "h", y: -0.2 },
     font: { family: "system-ui, sans-serif", size: 12 },
-    paper_bgcolor: "transparent",
-    plot_bgcolor: "transparent",
+    paper_bgcolor: "#ffffff",
+    plot_bgcolor: "#ffffff",
   };
 
   if (view.traces.length === 0) {
@@ -88,7 +103,7 @@ export function ChartView({ view, showZero, unit, conversionFactor = 1, defaultS
               title: "Save chart as PNG…",
               icon: Plotly.Icons.camera,
               click: (gd: unknown) => {
-                saveChartAsPng(gd, defaultSavePath);
+                saveChartAsPng(gd, defaultSavePath, title);
               },
             },
           ],

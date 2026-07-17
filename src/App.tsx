@@ -333,6 +333,18 @@ export function App() {
     return chips;
   }, [currentSymbol, setup]);
 
+  // Chart title baked into the plot itself (and therefore into exported
+  // images) so the variable, description, field and mapping are visible
+  // even outside the app: same info as the on-screen symbol-title header.
+  const chartTitle = useMemo(() => {
+    if (!currentSymbol) return "";
+    const header = currentSymbol.text
+      ? `${currentSymbol.name} — ${currentSymbol.text}`
+      : currentSymbol.name;
+    const chips = filterChips.map((c) => c.label).join(", ");
+    return chips ? `${header}<br>${chips}` : header;
+  }, [currentSymbol, filterChips]);
+
   // Default filename for chart image export: variable name + the mapping
   // values currently fixing each non-x dimension, underscore-separated.
   const chartFilenameHint = useMemo(() => {
@@ -547,6 +559,7 @@ export function App() {
                     unit={displayUnit}
                     conversionFactor={conversionFactor}
                     defaultSavePath={chartDefaultSavePath}
+                    title={chartTitle}
                   />
                 </Suspense>
               )
