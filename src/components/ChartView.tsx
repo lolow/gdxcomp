@@ -20,6 +20,17 @@ interface Props {
 // exported image only — the on-screen chart already shows the same info in
 // the app's own header, so a persistent Plotly title would duplicate it.
 // It's added just for the toImage capture, then removed again.
+//
+// title.automargin does NOT grow the top margin to fit the title text here
+// (verified against plotly.js-basic-dist-min 3.5.1 with title.xref/yref set
+// to "paper", which is needed for left-alignment): it draws the title
+// directly inside whatever margin.t already is, so it overlaps the plot's
+// top edge — right on top of the zero line for charts whose data starts
+// near zero. chartTitle (App.tsx) can be up to two lines (name + filter
+// chips), so we reserve a fixed margin.t sized for two lines instead of
+// relying on automargin, and restore the original margin afterward.
+const EXPORT_TITLE_MARGIN_T = 56;
+
 async function saveChartAsPng(gd: unknown, defaultSavePath: string, title: string) {
   const path = await save({
     defaultPath: defaultSavePath,
@@ -33,10 +44,10 @@ async function saveChartAsPng(gd: unknown, defaultSavePath: string, title: strin
     "title.xanchor": "left",
     "title.xref": "paper",
     "title.yref": "paper",
-    "title.automargin": true,
+    "margin.t": EXPORT_TITLE_MARGIN_T,
   } as never);
   const dataUrl = await Plotly.toImage(gd as never, { format: "png" });
-  await Plotly.relayout(gd as never, { "title.text": "" } as never);
+  await Plotly.relayout(gd as never, { "title.text": "", "margin.t": 24 } as never);
   const bytes = Uint8Array.from(atob(dataUrl.split(",")[1]), (c) => c.charCodeAt(0));
   await api.saveChartImage(path, Array.from(bytes));
 }
