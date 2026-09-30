@@ -65,6 +65,24 @@ block core development.
                    libsoup3-devel librsvg2-devel
   ```
 
+- **Windows** (x64, MSVC): install
+  - [Visual Studio 2022 Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/)
+    with the **Desktop development with C++** workload (MSVC + Windows SDK);
+  - [Rust](https://rustup.rs) with the default `x86_64-pc-windows-msvc` toolchain;
+  - [CMake](https://cmake.org/download/) (tick *Add CMake to the system PATH*);
+  - [Node.js LTS](https://nodejs.org) and [Git](https://git-scm.com/download/win).
+
+  WebView2 is already part of Windows 10/11. With winget:
+
+  ```powershell
+  winget install Microsoft.VisualStudio.2022.BuildTools --override "--wait --passive --add Microsoft.VisualStudio.Workload.VCTools --includeRecommended"
+  winget install Rustlang.Rustup Kitware.CMake OpenJS.NodeJS.LTS Git.Git
+  ```
+
+  If PowerShell refuses to run `npm` ("running scripts is disabled"), run
+  `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` once, or call
+  `npm.cmd` instead.
+
   See the [Tauri prerequisites](https://tauri.app/start/prerequisites/) for
   other platforms.
 
@@ -85,6 +103,9 @@ To produce a distributable bundle:
 ```sh
 npm run tauri build
 ```
+
+This produces `.deb`/`.rpm` on Linux and an NSIS installer (`*-setup.exe`)
+plus an `.msi` on Windows, under `src-tauri/target/release/bundle/`.
 
 > **Linux / Intel Xe GPU**: if the app crashes on startup with
 > `free(): corrupted unsorted chunks`, disable WebKit's DMA-BUF renderer:
@@ -111,9 +132,15 @@ npm test
 
 ## Releases
 
-Pre-built Linux binaries (`.deb` and `.rpm`) are available on the
-[Releases page](https://github.com/lolow/gdxcomp/releases).
-`libgdxcclib64.so` is bundled alongside the executable via an `$ORIGIN` rpath.
+Pre-built binaries are available on the
+[Releases page](https://github.com/lolow/gdxcomp/releases):
+
+- **Linux**: `.deb` and `.rpm`. `libgdxcclib64.so` is bundled alongside the
+  executable via an `$ORIGIN` rpath.
+- **Windows** (x64): `gdxcomp_<version>_x64-setup.exe` (NSIS, per-user
+  install) or `gdxcomp_<version>_x64_en-US.msi`. `gdxcclib64.dll` is
+  installed next to `gdxcomp.exe`. The installers are not code-signed, so
+  SmartScreen may warn on first launch (*More info → Run anyway*).
 
 ## License
 
