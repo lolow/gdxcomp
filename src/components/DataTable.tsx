@@ -1,5 +1,7 @@
-import { useMemo, useState } from "react";
+import { useDeferredValue, useMemo, useState } from "react";
 import type { TableRow, TableView } from "../types";
+
+const ROW_CAP = 5000;
 
 interface Props {
   view: TableView;
@@ -16,6 +18,7 @@ function fmt(v: number | null): string {
 export function DataTable({ view }: Props) {
   const [sort, setSort] = useState<SortKey | null>(null);
   const [colFilters, setColFilters] = useState<Record<number, string>>({});
+  const deferredFilters = useDeferredValue(colFilters);
 
   // Columns: File, <dim names>, Value.
   const valueCol = view.dimNames.length + 1;
@@ -34,7 +37,7 @@ export function DataTable({ view }: Props) {
   };
 
   const rows = useMemo(() => {
-    const activeFilters = Object.entries(colFilters).filter(([, v]) => v.trim());
+    const activeFilters = Object.entries(deferredFilters).filter(([, v]) => v.trim());
     let result = view.table;
 
     if (activeFilters.length > 0) {
@@ -57,7 +60,7 @@ export function DataTable({ view }: Props) {
 
     return result;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [view.table, sort, colFilters]);
+  }, [view.table, sort, deferredFilters]);
 
   function clickHeader(col: number) {
     setSort((s) => (s?.col === col ? { col, dir: (s.dir * -1) as 1 | -1 } : { col, dir: 1 }));
@@ -97,8 +100,8 @@ export function DataTable({ view }: Props) {
           </tr>
         </thead>
         <tbody>
-          {rows.map((r) => (
-            <tr key={`${r.file}${r.keys.join("")}${r.value}`}>
+          {rows.slice(0, ROW_CAP).map((r, idx) => (
+            <tr key={idx}>
               <td>{r.file}</td>
               {r.keys.map((k, j) => (
                 <td key={j}>{k}</td>
@@ -108,6 +111,12 @@ export function DataTable({ view }: Props) {
           ))}
         </tbody>
       </table>
+      {rows.length > ROW_CAP && (
+        <p className="row-cap-notice">
+          showing first {ROW_CAP.toLocaleString()} of {rows.length.toLocaleString()} rows — use
+          filters to narrow
+        </p>
+      )}
     </div>
   );
 }

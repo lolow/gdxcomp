@@ -20,7 +20,7 @@ impl YearMapper {
                     let explicit: HashMap<String, f64> = records
                         .iter()
                         .filter_map(|r| {
-                            let key = r.keys.first().cloned()?;
+                            let key = r.keys.first().map(|k| k.to_string())?;
                             let val = r.values[0];
                             val.is_finite().then_some((key, val))
                         })

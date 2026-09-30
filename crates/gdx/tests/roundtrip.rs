@@ -1,11 +1,13 @@
 //! Self-contained round-trip: write a GDX file with the writer, read it back,
 //! and assert structure and values. Requires no external data or GAMS install.
 
+use std::sync::Arc;
+
 use gdx::{GdxFile, GdxWriter, Record, SymbolType, ValueField};
 
 fn rec(keys: &[&str], values: [f64; 5]) -> Record {
     Record {
-        keys: keys.iter().map(|s| s.to_string()).collect(),
+        keys: keys.iter().map(|s| Arc::from(*s)).collect(),
         values,
     }
 }
@@ -83,14 +85,14 @@ fn write_then_read_roundtrip() {
     // Parameter values (Level slot).
     let c = file.read("c").unwrap();
     assert_eq!(c.len(), 3);
-    assert_eq!(c[0].keys, vec!["seattle", "new-york"]);
+    assert!(c[0].keys.iter().zip(["seattle", "new-york"]).all(|(a, b)| a.as_ref() == b));
     assert!((c[0].value(ValueField::Level) - 0.225).abs() < 1e-12);
     assert!((c[2].value(ValueField::Level) - 0.126).abs() < 1e-12);
 
     // Variable fields.
     let x = file.read("x").unwrap();
     assert_eq!(x.len(), 1);
-    assert_eq!(x[0].keys, vec!["seattle"]);
+    assert_eq!(x[0].keys[0].as_ref(), "seattle");
     assert!((x[0].value(ValueField::Level) - 50.0).abs() < 1e-12);
     assert!((x[0].value(ValueField::Marginal) - 1.5).abs() < 1e-12);
 }

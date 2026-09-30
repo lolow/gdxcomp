@@ -61,4 +61,7 @@ export const api = {
   readParamMap(symbol: string): Promise<Record<string, number>> {
     return invoke("read_param_map", { symbol });
   },
+  saveChartImage(path: string, data: number[]): Promise<void> {
+    return invoke("save_chart_image", { path, data });
+  },
 };

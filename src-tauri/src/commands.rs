@@ -4,14 +4,14 @@
 //! Files are cached in app state (metadata only); records are read lazily per
 //! `get_view` call and not held in memory between calls.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 
 use gdxcomp_core::{
-    build_chart, build_table, build_view, common_symbols, refine_setup, ChartView, DisplaySetup,
-    LoadedFile, PlotView, SymbolMeta, TableView,
+    build_chart, build_table, build_view, common_symbols, iteration_tags, refine_setup, ChartView,
+    DisplaySetup, IterTag, LoadedFile, PlotView, SymbolMeta, TableView,
 };
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Manager, State};
@@ -176,17 +176,8 @@ pub struct FileMeta {
     pub scenario: String,
     pub path: String,
     pub symbols: Vec<SymbolMeta>,
-}
-
-impl From<&FileEntry> for FileMeta {
-    fn from(e: &FileEntry) -> Self {
-        FileMeta {
-            label: e.file.label.clone(),
-            scenario: e.scenario.clone(),
-            path: e.file.path.to_string_lossy().into_owned(),
-            symbols: e.file.symbols.clone(),
-        }
-    }
+    /// Set only when all loaded files form one convergence set.
+    pub iter: Option<IterTag>,
 }
 
 /// Result of `get_view`.
@@ -200,14 +191,26 @@ pub struct GetViewResult {
 type CmdResult<T> = Result<T, String>;
 
 fn snapshot(entries: &[FileEntry]) -> Vec<FileMeta> {
-    entries.iter().map(FileMeta::from).collect()
+    let labels: Vec<&str> = entries.iter().map(|e| e.file.label.as_str()).collect();
+    let tags = iteration_tags(&labels);
+    entries
+        .iter()
+        .enumerate()
+        .map(|(i, e)| FileMeta {
+            label: e.file.label.clone(),
+            scenario: e.scenario.clone(),
+            path: e.file.path.to_string_lossy().into_owned(),
+            symbols: e.file.symbols.clone(),
+            iter: tags.as_ref().map(|t| t[i]),
+        })
+        .collect()
 }
 
 // ---------------------------------------------------------------------------
 // Commands
 // ---------------------------------------------------------------------------
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn open_gdx(paths: Vec<String>, state: State<AppState>) -> CmdResult<Vec<FileMeta>> {
     let mut entries = state.entries.lock().unwrap();
     for path in paths {
@@ -227,7 +230,7 @@ pub fn open_gdx(paths: Vec<String>, state: State<AppState>) -> CmdResult<Vec<Fil
     Ok(snapshot(&entries))
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn open_folder(path: String, state: State<AppState>) -> CmdResult<Vec<FileMeta>> {
     let dir = PathBuf::from(&path);
     let mut gdx_paths: Vec<PathBuf> = std::fs::read_dir(&dir)
@@ -271,7 +274,7 @@ pub fn clear_files(state: State<AppState>) -> Vec<FileMeta> {
     vec![]
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn reload_files(state: State<AppState>) -> CmdResult<Vec<FileMeta>> {
     let mut entries = state.entries.lock().unwrap();
     for entry in entries.iter_mut() {
@@ -308,21 +311,26 @@ pub fn reset_scenarios(state: State<AppState>) -> Vec<FileMeta> {
     snapshot(&entries)
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn common_symbols_cmd(state: State<AppState>) -> Vec<SymbolMeta> {
-    let entries = state.entries.lock().unwrap();
-    let files: Vec<LoadedFile> = entries.iter().map(|e| e.file.clone()).collect();
+    let files: Vec<LoadedFile> = {
+        let entries = state.entries.lock().unwrap();
+        entries.iter().map(|e| e.file.clone()).collect()
+    };
     common_symbols(&files)
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn distinct_keys(symbol: String, dim: usize, state: State<AppState>) -> Vec<String> {
-    let entries = state.entries.lock().unwrap();
+    let files: Vec<LoadedFile> = {
+        let entries = state.entries.lock().unwrap();
+        entries.iter().map(|e| e.file.clone()).collect()
+    };
+    let mut seen: HashSet<String> = HashSet::new();
     let mut out: Vec<String> = Vec::new();
-    for e in entries.iter() {
-        let keys = e.file.distinct_keys(&symbol, dim).unwrap_or_default();
-        for k in keys {
-            if !out.contains(&k) {
+    for f in &files {
+        for k in f.distinct_keys(&symbol, dim).unwrap_or_default() {
+            if seen.insert(k.clone()) {
                 out.push(k);
             }
         }
@@ -343,10 +351,12 @@ fn scenario_files(entries: &[FileEntry]) -> Vec<LoadedFile> {
         .collect()
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn get_view(setup: DisplaySetup, state: State<AppState>) -> CmdResult<GetViewResult> {
-    let entries = state.entries.lock().unwrap();
-    let files = scenario_files(&entries);
+    let files = {
+        let entries = state.entries.lock().unwrap();
+        scenario_files(&entries)
+    };
     let effective = refine_setup(&files, &setup).map_err(|e| e.to_string())?;
     let view = build_view(&files, &effective).map_err(|e| e.to_string())?;
     Ok(GetViewResult {
@@ -363,10 +373,12 @@ pub struct GetChartResult {
     pub setup: DisplaySetup,
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn get_chart_view(setup: DisplaySetup, state: State<AppState>) -> CmdResult<GetChartResult> {
-    let entries = state.entries.lock().unwrap();
-    let files = scenario_files(&entries);
+    let files = {
+        let entries = state.entries.lock().unwrap();
+        scenario_files(&entries)
+    };
     let effective = refine_setup(&files, &setup).map_err(|e| e.to_string())?;
     let view = build_chart(&files, &effective).map_err(|e| e.to_string())?;
     Ok(GetChartResult {
@@ -375,10 +387,12 @@ pub fn get_chart_view(setup: DisplaySetup, state: State<AppState>) -> CmdResult<
     })
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn get_table_view(setup: DisplaySetup, state: State<AppState>) -> CmdResult<TableView> {
-    let entries = state.entries.lock().unwrap();
-    let files = scenario_files(&entries);
+    let files = {
+        let entries = state.entries.lock().unwrap();
+        scenario_files(&entries)
+    };
     let effective = refine_setup(&files, &setup).map_err(|e| e.to_string())?;
     build_table(&files, &effective).map_err(|e| e.to_string())
 }
@@ -418,20 +432,41 @@ pub fn load_session(app: AppHandle) -> Option<Session> {
 }
 
 // ---------------------------------------------------------------------------
+// Chart image export
+// ---------------------------------------------------------------------------
+
+/// Writes chart PNG bytes to a path the user chose via the native save
+/// dialog. The webview can call this with any path, so the extension check
+/// keeps it from overwriting anything but images.
+#[tauri::command]
+pub fn save_chart_image(path: String, data: Vec<u8>) -> CmdResult<()> {
+    let is_png = Path::new(&path)
+        .extension()
+        .is_some_and(|e| e.eq_ignore_ascii_case("png"));
+    if !is_png {
+        return Err(format!("chart images must be saved as .png: {path}"));
+    }
+    fs::write(&path, data).map_err(|e| e.to_string())
+}
+
+// ---------------------------------------------------------------------------
 // Parameter utilities
 // ---------------------------------------------------------------------------
 
 /// Read a 1-dim parameter as a {key -> level_value} map from the first file
 /// that contains the symbol.
-#[tauri::command]
+#[tauri::command(async)]
 pub fn read_param_map(symbol: String, state: State<AppState>) -> HashMap<String, f64> {
-    let entries = state.entries.lock().unwrap();
-    for e in entries.iter() {
-        if let Ok(records) = e.file.read_records_arc(&symbol) {
+    let files: Vec<LoadedFile> = {
+        let entries = state.entries.lock().unwrap();
+        entries.iter().map(|e| e.file.clone()).collect()
+    };
+    for file in &files {
+        if let Ok(records) = file.read_records_arc(&symbol) {
             let map: HashMap<String, f64> = records
                 .iter()
                 .filter_map(|r| {
-                    let key = r.keys.first().cloned()?;
+                    let key = r.keys.first().map(|k| k.to_string())?;
                     let val = r.values[0];
                     val.is_finite().then_some((key, val))
                 })

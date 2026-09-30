@@ -35,7 +35,7 @@ fn parameter_values_match_gdxdump() {
     let c = file.read("c").unwrap();
     let find = |a: &str, b: &str| {
         c.iter()
-            .find(|r| r.keys == vec![a.to_string(), b.to_string()])
+            .find(|r| r.keys.iter().zip([a, b]).all(|(k, s)| k.as_ref() == s))
             .map(|r| r.value(ValueField::Level))
             .expect("record present")
     };
@@ -54,7 +54,7 @@ fn special_eps_maps_to_zero() {
     let supply = file.read("supply").unwrap();
     let seattle = supply
         .iter()
-        .find(|r| r.keys == vec!["seattle".to_string()])
+        .find(|r| r.keys[0].as_ref() == "seattle")
         .expect("seattle supply record");
     assert_eq!(seattle.value(ValueField::Marginal), 0.0);
 }

@@ -10,6 +10,7 @@ const ChartView = lazy(() =>
 );
 import { FileBar } from "./components/FileBar";
 import { FilterPanel } from "./components/FilterPanel";
+import { IterationPanel } from "./components/IterationPanel";
 import { MappingPanel } from "./components/MappingPanel";
 import { SymbolPicker } from "./components/SymbolPicker";
 import type {
@@ -23,6 +24,13 @@ import type {
   TableView as TableViewData,
 } from "./types";
 import { defaultSetup } from "./types";
+import {
+  fullRange,
+  isIterationSet,
+  iterationStyles,
+  selectedPaths,
+  type IterRange,
+} from "./iteration";
 
 const WITCH_SYMBOLS = new Set(["Q", "Q_EMI", "Q_FUEL", "I", "I_EN"]);
 const UNIT_FIELDS = new Set(["level", "lower", "upper"]);
@@ -65,6 +73,7 @@ export function App() {
   const [savedSession, setSavedSession] = useState<Session | null>(null);
   const [unitChoice, setUnitChoice] = useState<string | null>(null);
   const [emiGwp, setEmiGwp] = useState<Record<string, number>>({});
+  const [iterRange, setIterRange] = useState<IterRange | null>(null);
 
   const syncFromBackend = useCallback(async () => {
     const f = await api.listFiles();
@@ -282,7 +291,7 @@ export function App() {
   function selectSymbol(name: string, withMode?: AppMode) {
     const m = withMode ?? mode;
     const sym = symbols.find((s) => s.name === name);
-    let s = defaultSetup(name, m);
+    let s = { ...defaultSetup(name, m), files: selectedPaths(files, iterRange) };
     if (m === "witch" && sym) {
       const tIdx = sym.domains.indexOf("t");
       if (tIdx >= 0) s = { ...s, xDim: tIdx };
@@ -308,6 +317,18 @@ export function App() {
   useEffect(() => {
     distinctKeysCache.current.clear();
   }, [filesKey]);
+
+  const iterSet = useMemo(() => isIterationSet(files), [files]);
+  const iterStyles = useMemo(() => (iterSet ? iterationStyles(files) : null), [iterSet, files]);
+  useEffect(() => {
+    setIterRange(iterSet ? fullRange(files) : null);
+  }, [filesKey, iterSet]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    const paths = selectedPaths(files, iterRange);
+    setSetup((prev) =>
+      !prev || prev.files.join("\n") === paths.join("\n") ? prev : { ...prev, files: paths },
+    );
+  }, [iterRange]); // eslint-disable-line react-hooks/exhaustive-deps
   const fetchKeys = useCallback(
     (dim: number) => {
       if (!setup) return Promise.resolve<string[]>([]);
@@ -326,6 +347,15 @@ export function App() {
   const filterChips = useMemo(() => {
     if (!currentSymbol || !setup) return [];
     const chips: { key: string; label: string }[] = [];
+    if (iterRange && files.length > 0) {
+      const full = fullRange(files);
+      if (iterRange.iLo !== full.iLo || iterRange.iHi !== full.iHi) {
+        chips.push({ key: "iter", label: `i ${iterRange.iLo}–${iterRange.iHi}` });
+      }
+      if (iterRange.rLo !== full.rLo || iterRange.rHi !== full.rHi) {
+        chips.push({ key: "run", label: `r ${iterRange.rLo}–${iterRange.rHi}` });
+      }
+    }
     if (currentSymbol.kind === "variable" || currentSymbol.kind === "equation") {
       chips.push({ key: "field", label: setup.field });
     }
@@ -342,7 +372,51 @@ export function App() {
       }
     }
     return chips;
+  }, [currentSymbol, setup, iterRange, files]);
+
+  // Chart title baked into the plot itself (and therefore into exported
+  // images) so the variable, description, field and mapping are visible
+  // even outside the app: same info as the on-screen symbol-title header.
+  const chartTitle = useMemo(() => {
+    if (!currentSymbol) return "";
+    const header = currentSymbol.text
+      ? `${currentSymbol.name} — ${currentSymbol.text}`
+      : currentSymbol.name;
+    const chips = filterChips.map((c) => c.label).join(", ");
+    return chips ? `${header}<br>${chips}` : header;
+  }, [currentSymbol, filterChips]);
+
+  // Default filename for chart image export: variable name + the mapping
+  // values currently fixing each non-x dimension, underscore-separated.
+  const chartFilenameHint = useMemo(() => {
+    if (!setup) return "chart";
+    const parts = [setup.symbol];
+    if (currentSymbol && (currentSymbol.kind === "variable" || currentSymbol.kind === "equation")) {
+      parts.push(setup.field);
+    }
+    if (currentSymbol) {
+      for (let d = 0; d < currentSymbol.dim; d++) {
+        if (d === setup.xDim) continue;
+        const filterVals = setup.filters[String(d)];
+        if (filterVals && filterVals.length === 1) parts.push(filterVals[0]);
+      }
+    }
+    return parts
+      .map((p) => p.trim().replace(/[^a-zA-Z0-9.-]+/g, "_"))
+      .join("_");
   }, [currentSymbol, setup]);
+
+  // Default save location for chart image export: same folder as the first
+  // loaded GDX file, so exports land next to the data they came from.
+  const chartDefaultSavePath = useMemo(() => {
+    const filename = `${chartFilenameHint}.png`;
+    const firstPath = files[0]?.path;
+    if (!firstPath) return filename;
+    const sepIdx = Math.max(firstPath.lastIndexOf("/"), firstPath.lastIndexOf("\\"));
+    if (sepIdx < 0) return filename;
+    const sep = firstPath[sepIdx];
+    return `${firstPath.slice(0, sepIdx)}${sep}${filename}`;
+  }, [chartFilenameHint, files]);
 
   const currentUnit = useMemo(() => {
     if (!currentSymbol?.text || !setup) return null;
@@ -525,7 +599,16 @@ export function App() {
             ? chartView
               ? (
                 <Suspense fallback={<div className="loading-overlay"><div className="spinner" /></div>}>
-                  <ChartView view={chartView} showZero={showZero} unit={displayUnit} conversionFactor={conversionFactor} />
+                  <ChartView
+                    view={chartView}
+                    showZero={showZero}
+                    unit={displayUnit}
+                    conversionFactor={conversionFactor}
+                    defaultSavePath={chartDefaultSavePath}
+                    title={chartTitle}
+                    onError={setError}
+                    styles={iterStyles}
+                  />
                 </Suspense>
               )
               : !loading && (
@@ -555,6 +638,7 @@ export function App() {
         {rightOpen && (
           currentSymbol && setup ? (
             <>
+              {iterRange && <IterationPanel files={files} range={iterRange} onChange={setIterRange} />}
               <MappingPanel symbol={currentSymbol} setup={setup} mode={mode} onChange={patchSetup} />
               <FilterPanel
                 symbol={currentSymbol}

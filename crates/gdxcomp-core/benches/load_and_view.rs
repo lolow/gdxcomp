@@ -13,7 +13,8 @@
 //!   gdx_examples_more/*.gdx                   (15 more files)
 
 use criterion::{criterion_group, criterion_main, Criterion};
-use gdxcomp_core::{build_view, refine_setup, DisplaySetup, LoadedFile, SymbolKind, SymbolMeta};
+use gdx::GdxFile;
+use gdxcomp_core::{build_chart, build_view, refine_setup, DisplaySetup, LoadedFile, SymbolKind, SymbolMeta};
 use std::path::PathBuf;
 
 fn examples_dir() -> PathBuf {
@@ -181,6 +182,25 @@ fn bench_read_records_largest(c: &mut Criterion) {
     });
 }
 
+fn bench_cold_read_largest_symbol(c: &mut Criterion) {
+    let path = example_path();
+    if !path.exists() {
+        return;
+    }
+    let file = LoadedFile::open(&path).unwrap();
+    let files = vec![file];
+    let Some(name) = largest_shared(&files).map(|s| s.name.clone()) else {
+        eprintln!("Skipping cold_read_largest_symbol: no shared symbol");
+        return;
+    };
+    eprintln!("cold_read_largest_symbol: picked '{name}'");
+    // Open a fresh GdxFile each iteration — bypasses the LoadedFile LRU cache,
+    // so every iteration is a true cold FFI read.
+    c.bench_function("cold_read_largest_symbol", |b| {
+        b.iter(|| GdxFile::open(&path).unwrap().read(&name).unwrap())
+    });
+}
+
 fn bench_distinct_keys_dim0_ykali(c: &mut Criterion) {
     let path = example_path();
     if !path.exists() {
@@ -232,6 +252,21 @@ fn bench_build_view_aggregated_4files(c: &mut Criterion) {
     });
 }
 
+fn bench_build_chart_aggregated_4files(c: &mut Criterion) {
+    let paths = list_gdx(&examples_dir());
+    if paths.len() < 4 {
+        eprintln!("Skipping build_chart_aggregated_4files: needs gdx_examples/");
+        return;
+    }
+    let files = load_all(&paths);
+    let mut setup = DisplaySetup::for_symbol("ykali");
+    setup.x_dim = 0;
+    let setup = refine_setup(&files, &setup).unwrap();
+    c.bench_function("build_chart_aggregated_4files", |b| {
+        b.iter(|| build_chart(&files, &setup).unwrap())
+    });
+}
+
 fn bench_build_view_2dim_aggregated_4files(c: &mut Criterion) {
     let paths = list_gdx(&examples_dir());
     if paths.len() < 4 {
@@ -262,9 +297,11 @@ criterion_group!(
     bench_open_metadata_4files,
     bench_open_metadata_19files,
     bench_read_records_largest,
+    bench_cold_read_largest_symbol,
     bench_distinct_keys_dim0_ykali,
     bench_distinct_keys_dim0_19files,
     bench_build_view_aggregated_4files,
+    bench_build_chart_aggregated_4files,
     bench_build_view_2dim_aggregated_4files,
 );
 criterion_main!(benches);
