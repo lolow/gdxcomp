@@ -5,6 +5,9 @@
 # Tauri-generated code (schemas, etc.)
 /src-tauri/gen
 
+# gdxcclib64.dll staged by src-tauri/build.rs for Windows bundling
+/src-tauri/bundled
+
 # Node / Vite / Tauri frontend
 node_modules
 dist

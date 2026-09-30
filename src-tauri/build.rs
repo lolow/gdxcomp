@@ -1,6 +1,26 @@
 fn main() {
+    // Must run before tauri_build, which fails if a bundle resource is missing.
+    stage_gdxcclib_dll();
     tauri_build::build();
     emit_gdxcclib_rpath();
+}
+
+/// Windows has no rpath concept; the DLL must sit alongside the executable.
+///
+/// The DLL is copied to a fixed, profile-independent path (`bundled/`) that
+/// `tauri.windows.conf.json` lists as a resource. Tauri then places it next to
+/// the exe both for `tauri dev` (in `target/<profile>`) and in the installers.
+fn stage_gdxcclib_dll() {
+    if std::env::var("CARGO_CFG_TARGET_OS").unwrap_or_default() != "windows" {
+        return;
+    }
+
+    let libdir = std::env::var("DEP_GDXCCLIB64_LIBDIR").unwrap();
+    let dll = std::path::Path::new(&libdir).join("gdxcclib64.dll");
+    let staged = std::path::Path::new("bundled");
+    std::fs::create_dir_all(staged).unwrap();
+    std::fs::copy(&dll, staged.join("gdxcclib64.dll")).unwrap();
+    println!("cargo:rerun-if-changed={}", dll.display());
 }
 
 /// Emit rpath linker args so the gdxcomp binary can find the GDX shared
@@ -14,8 +34,6 @@ fn main() {
 ///  1. The absolute build-cache directory (for `cargo run` / running in-place).
 ///  2. An origin-relative token ($ORIGIN on Linux, @loader_path on macOS) for
 ///     a bundled library placed next to the installed binary.
-///
-/// Windows has no rpath concept; the DLL must be alongside the executable.
 fn emit_gdxcclib_rpath() {
     let target_os = std::env::var("CARGO_CFG_TARGET_OS").unwrap_or_default();
 
@@ -43,13 +61,6 @@ fn emit_gdxcclib_rpath() {
             let libdir = entry.path().join("out/build");
             println!("cargo:rustc-link-arg=-Wl,-rpath,{}", libdir.display());
             println!("cargo:rustc-link-arg=-Wl,-rpath,{origin_token}");
-            // On Windows, copy the DLL next to the executable so Tauri bundles it.
-            if target_os == "windows" {
-                let dll = entry.path().join("out/build/gdxcclib64.dll");
-                if dll.exists() {
-                    let _ = std::fs::copy(&dll, profile_dir.join("gdxcclib64.dll"));
-                }
-            }
             return;
         }
     }
