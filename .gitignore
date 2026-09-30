@@ -5,7 +5,7 @@
 # Tauri-generated code (schemas, etc.)
 /src-tauri/gen
 
-# gdxcclib64.dll staged by src-tauri/build.rs for Windows bundling
+# GDX shared library staged by src-tauri/build.rs for bundling (Windows DLL, Linux .so)
 /src-tauri/bundled
 
 # Node / Vite / Tauri frontend
