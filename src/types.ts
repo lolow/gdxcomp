@@ -22,14 +22,23 @@ export interface SymbolMeta {
   domains: string[];
 }
 
+/** Position of a file within a WITCH convergence set (`<core>_r<run>_i<iter>`). */
+export interface IterTag {
+  run: number;
+  iter: number;
+}
+
 export interface FileMeta {
   label: string;
   scenario: string;
   path: string;
   symbols: SymbolMeta[];
+  /** Set only when all loaded files form one convergence set. */
+  iter: IterTag | null;
 }
 
 export interface DisplaySetup {
+  /** Paths of the files to plot; empty means every loaded file. */
   files: string[];
   symbol: string;
   field: Field;

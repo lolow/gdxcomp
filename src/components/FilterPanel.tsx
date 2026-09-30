@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { AppMode, DimAgg, DisplaySetup, SymbolMeta } from "../types";
 import { dimLabel } from "./MappingPanel";
+import { RangeSlider } from "./RangeSlider";
 
 interface Props {
   symbol: SymbolMeta;
@@ -44,37 +45,7 @@ function YearRangeFilter({ uels, filter, onFilter }: {
     onFilter(selected.length === sorted.length ? [] : selected);
   }
 
-  const pct = (i: number) => `${(i / (sorted.length - 1)) * 100}%`;
-
-  return (
-    <div className="year-range">
-      <div className="year-range-values">
-        <span>{sorted[minIdx]?.year}</span>
-        <span>–</span>
-        <span>{sorted[maxIdx]?.year}</span>
-      </div>
-      <div className="year-range-track">
-        <div
-          className="year-range-fill"
-          style={{ left: pct(minIdx), width: `calc(${pct(maxIdx)} - ${pct(minIdx)})` }}
-        />
-        <input
-          type="range"
-          min={0}
-          max={sorted.length - 1}
-          value={minIdx}
-          onChange={(e) => setRange(Math.min(Number(e.target.value), maxIdx), maxIdx)}
-        />
-        <input
-          type="range"
-          min={0}
-          max={sorted.length - 1}
-          value={maxIdx}
-          onChange={(e) => setRange(minIdx, Math.max(Number(e.target.value), minIdx))}
-        />
-      </div>
-    </div>
-  );
+  return <RangeSlider labels={sorted.map((e) => e.year)} lo={minIdx} hi={maxIdx} onChange={setRange} />;
 }
 
 export function FilterPanel({ symbol, setup, mode, onChange, fetchKeys }: Props) {
