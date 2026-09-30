@@ -1015,7 +1015,7 @@ dependencies = [
 
 [[package]]
 name = "gdxcomp"
-version = "0.0.12"
+version = "0.1.0"
 dependencies = [
  "gdx-sys",
  "gdxcomp-core",

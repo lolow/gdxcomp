@@ -8,6 +8,21 @@ All notable changes are documented here. Versions follow [semver](https://semver
 
 ---
 
+## [0.1.0] — 2026-09-30
+
+### Added
+- Windows builds. gdxcomp now builds natively with MSVC and ships as an
+  NSIS installer (`gdxcomp_0.1.0_x64-setup.exe`) and an MSI
+  (`gdxcomp_0.1.0_x64_en-US.msi`), with `gdxcclib64.dll` installed next to
+  the executable.
+
+### Fixed
+- The app's build script now always runs after the GDX library is built,
+  so a clean build reliably finds `libgdxcclib64` (it previously depended
+  on Cargo's build order).
+
+---
+
 ## [0.0.12] — 2026-09-30
 
 ### Added
