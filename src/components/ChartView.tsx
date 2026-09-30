@@ -1,6 +1,8 @@
 import { useMemo } from "react";
 import Plotly from "plotly.js-basic-dist-min";
 import createPlotlyComponent from "react-plotly.js/factory";
+import { save } from "@tauri-apps/plugin-dialog";
+import { api } from "../api";
 import type { IterStyle } from "../iteration";
 import type { ChartView as ChartViewData, Trace } from "../types";
 
@@ -11,8 +13,55 @@ interface Props {
   showZero: boolean;
   unit?: string | null;
   conversionFactor?: number;
+  defaultSavePath: string;
+  title: string;
+  onError?: (message: string) => void;
   /** Convergence-set styling by trace name; replaces the per-file legend. */
   styles?: Map<string, IterStyle> | null;
+}
+
+// The title (variable, description, field, mapping) is baked into the
+// exported image only — the on-screen chart already shows the same info in
+// the app's own header, so a persistent Plotly title would duplicate it.
+// It's added only to the off-screen copy that toImage renders, so the live
+// chart is never touched and keeps the user's zoom and legend toggles.
+//
+// title.automargin does NOT grow the top margin to fit the title text here
+// (verified against plotly.js-basic-dist-min 3.5.1 with title.xref/yref set
+// to "paper", which is needed for left-alignment): it draws the title
+// directly inside whatever margin.t already is, so it overlaps the plot's
+// top edge — right on top of the zero line for charts whose data starts
+// near zero. chartTitle (App.tsx) can be up to two lines (name + filter
+// chips), so we reserve a fixed margin.t sized for two lines instead of
+// relying on automargin.
+const EXPORT_TITLE_MARGIN_T = 56;
+
+interface GraphDiv extends HTMLElement {
+  data: unknown[];
+  layout: { margin?: Record<string, number> } & Record<string, unknown>;
+}
+
+async function saveChartAsPng(gd: GraphDiv, defaultSavePath: string, title: string) {
+  let path = await save({
+    defaultPath: defaultSavePath,
+    filters: [{ name: "PNG image", extensions: ["png"] }],
+  });
+  if (!path) return;
+  // Linux file dialogs do not append the filter's extension.
+  if (!/\.png$/i.test(path)) path += ".png";
+  const dataUrl = await Plotly.toImage(
+    {
+      data: gd.data,
+      layout: {
+        ...gd.layout,
+        title: { text: title, font: { size: 13 }, x: 0, xanchor: "left", xref: "paper", yref: "paper" },
+        margin: { ...gd.layout.margin, t: EXPORT_TITLE_MARGIN_T },
+      },
+    },
+    { format: "png", width: gd.clientWidth, height: gd.clientHeight, scale: 2 },
+  );
+  const bytes = Uint8Array.from(atob(dataUrl.split(",")[1]), (c) => c.charCodeAt(0));
+  await api.saveChartImage(path, Array.from(bytes));
 }
 
 function iterationTraces(traces: Trace[], styles: Map<string, IterStyle>, scale: (y: Trace["y"]) => Trace["y"]) {
@@ -64,7 +113,7 @@ function iterationTraces(traces: Trace[], styles: Map<string, IterStyle>, scale:
   return [...lines, ...runLegend, colorBar];
 }
 
-export function ChartView({ view, showZero, unit, conversionFactor = 1, styles }: Props) {
+export function ChartView({ view, showZero, unit, conversionFactor = 1, defaultSavePath, title, onError, styles }: Props) {
   const data = useMemo(() => {
     const scale = (y: Trace["y"]) =>
       conversionFactor !== 1 ? y.map((v) => (v === null ? null : v * conversionFactor)) : y;
@@ -93,8 +142,8 @@ export function ChartView({ view, showZero, unit, conversionFactor = 1, styles }
     yaxis: { title: { text: yTitle }, automargin: true, rangemode, autorange: true },
     legend: { orientation: "h", y: -0.2 },
     font: { family: "system-ui, sans-serif", size: 12 },
-    paper_bgcolor: "transparent",
-    plot_bgcolor: "transparent",
+    paper_bgcolor: "#ffffff",
+    plot_bgcolor: "#ffffff",
   };
 
   if (view.traces.length === 0) {
@@ -112,7 +161,28 @@ export function ChartView({ view, showZero, unit, conversionFactor = 1, styles }
       key={`${view.symbol}|${unit ?? ""}|${conversionFactor}`}
       data={data as never}
       layout={layout as never}
-      config={{ displaylogo: false, responsive: true } as never}
+      config={{
+        displaylogo: false,
+        responsive: true,
+        // Full override (rather than modeBarButtonsToAdd, which always
+        // appends at the end) so the save button keeps the default
+        // toImage button's original leftmost slot.
+        modeBarButtons: [
+          [
+            {
+              name: "Save chart as PNG…",
+              title: "Save chart as PNG…",
+              icon: Plotly.Icons.camera,
+              click: (gd: GraphDiv) => {
+                saveChartAsPng(gd, defaultSavePath, title).catch((e) => onError?.(String(e)));
+              },
+            },
+          ],
+          ["zoom2d", "pan2d", "select2d", "lasso2d"],
+          ["zoomIn2d", "zoomOut2d", "autoScale2d", "resetScale2d"],
+          ["toggleSpikelines", "hoverClosestCartesian", "hoverCompareCartesian"],
+        ],
+      } as never}
       useResizeHandler
       style={{ width: "100%", height: "100%" }}
     />
