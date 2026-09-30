@@ -149,6 +149,49 @@ fn filters_restrict_records() {
     assert_eq!(view.table.len(), 4);
 }
 
+fn files_named(stems: &[String]) -> (TempDir, Vec<LoadedFile>) {
+    let dir = tempfile::tempdir().unwrap();
+    let files = stems
+        .iter()
+        .map(|stem| {
+            let path = dir.path().join(format!("{stem}.gdx"));
+            write_scenario(&path, 1.0, "extra");
+            LoadedFile::open(&path).unwrap()
+        })
+        .collect();
+    (dir, files)
+}
+
+#[test]
+fn setup_files_restricts_traces_to_allowlist() {
+    let stems: Vec<String> = ["a", "b", "c"].iter().map(|s| s.to_string()).collect();
+    let (_d, files) = files_named(&stems);
+    let mut setup = DisplaySetup::for_symbol("a");
+    setup.files = vec![files[0].path.clone(), files[2].path.clone()];
+
+    let view = build_view(&files, &setup).unwrap();
+
+    let names: Vec<&str> = view.traces.iter().map(|t| t.name.as_str()).collect();
+    assert_eq!(names, vec!["a", "c"]);
+    assert!(view.table.iter().all(|r| r.file != "b"));
+}
+
+#[test]
+fn iteration_sets_may_exceed_the_default_trace_cap() {
+    let stems: Vec<String> = (1..=31).map(|i| format!("debug_r1_i{i}")).collect();
+    let (_d, files) = files_named(&stems);
+    let view = build_chart(&files, &DisplaySetup::for_symbol("a")).unwrap();
+    assert_eq!(view.traces.len(), 31);
+}
+
+#[test]
+fn ordinary_sets_keep_the_default_trace_cap() {
+    let stems: Vec<String> = (1..=31).map(|i| format!("scen{i}")).collect();
+    let (_d, files) = files_named(&stems);
+    let err = build_chart(&files, &DisplaySetup::for_symbol("a")).unwrap_err();
+    assert!(matches!(err, gdxcomp_core::CoreError::TooManyTraces { .. }));
+}
+
 #[test]
 fn missing_symbol_is_an_error() {
     let (_d, files) = two_files();

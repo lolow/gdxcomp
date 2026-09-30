@@ -10,8 +10,8 @@ use std::path::PathBuf;
 use std::sync::Mutex;
 
 use gdxcomp_core::{
-    build_chart, build_table, build_view, common_symbols, refine_setup, ChartView, DisplaySetup,
-    LoadedFile, PlotView, SymbolMeta, TableView,
+    build_chart, build_table, build_view, common_symbols, iteration_tags, refine_setup, ChartView,
+    DisplaySetup, IterTag, LoadedFile, PlotView, SymbolMeta, TableView,
 };
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Manager, State};
@@ -176,17 +176,8 @@ pub struct FileMeta {
     pub scenario: String,
     pub path: String,
     pub symbols: Vec<SymbolMeta>,
-}
-
-impl From<&FileEntry> for FileMeta {
-    fn from(e: &FileEntry) -> Self {
-        FileMeta {
-            label: e.file.label.clone(),
-            scenario: e.scenario.clone(),
-            path: e.file.path.to_string_lossy().into_owned(),
-            symbols: e.file.symbols.clone(),
-        }
-    }
+    /// Set only when all loaded files form one convergence set.
+    pub iter: Option<IterTag>,
 }
 
 /// Result of `get_view`.
@@ -200,7 +191,19 @@ pub struct GetViewResult {
 type CmdResult<T> = Result<T, String>;
 
 fn snapshot(entries: &[FileEntry]) -> Vec<FileMeta> {
-    entries.iter().map(FileMeta::from).collect()
+    let labels: Vec<&str> = entries.iter().map(|e| e.file.label.as_str()).collect();
+    let tags = iteration_tags(&labels);
+    entries
+        .iter()
+        .enumerate()
+        .map(|(i, e)| FileMeta {
+            label: e.file.label.clone(),
+            scenario: e.scenario.clone(),
+            path: e.file.path.to_string_lossy().into_owned(),
+            symbols: e.file.symbols.clone(),
+            iter: tags.as_ref().map(|t| t[i]),
+        })
+        .collect()
 }
 
 // ---------------------------------------------------------------------------

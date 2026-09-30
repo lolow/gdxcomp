@@ -3,7 +3,8 @@ import Plotly from "plotly.js-basic-dist-min";
 import createPlotlyComponent from "react-plotly.js/factory";
 import { save } from "@tauri-apps/plugin-dialog";
 import { api } from "../api";
-import type { ChartView as ChartViewData } from "../types";
+import type { IterStyle } from "../iteration";
+import type { ChartView as ChartViewData, Trace } from "../types";
 
 const Plot = createPlotlyComponent(Plotly);
 
@@ -14,6 +15,8 @@ interface Props {
   conversionFactor?: number;
   defaultSavePath: string;
   title: string;
+  /** Convergence-set styling by trace name; replaces the per-file legend. */
+  styles?: Map<string, IterStyle> | null;
 }
 
 // The title (variable, description, field, mapping) is baked into the
@@ -52,21 +55,69 @@ async function saveChartAsPng(gd: unknown, defaultSavePath: string, title: strin
   await api.saveChartImage(path, Array.from(bytes));
 }
 
-export function ChartView({ view, showZero, unit, conversionFactor = 1, defaultSavePath, title }: Props) {
-  const data = useMemo(
-    () =>
-      view.traces.map((t) => ({
-        type: "scatter",
-        mode: "lines+markers",
-        name: t.name,
-        x: t.x,
-        y: conversionFactor !== 1
-          ? t.y.map((v) => (v === null ? null : (v as number) * conversionFactor))
-          : t.y,
-        connectgaps: false,
-      })),
-    [view, conversionFactor],
-  );
+function iterationTraces(traces: Trace[], styles: Map<string, IterStyle>, scale: (y: Trace["y"]) => Trace["y"]) {
+  const styled = traces
+    .filter((t) => styles.has(t.name))
+    .map((t) => ({ t, s: styles.get(t.name)! }))
+    .sort((a, b) => a.s.run - b.s.run || a.s.iter - b.s.iter);
+  const lines = styled.map(({ t, s }) => ({
+    type: "scatter",
+    mode: "lines",
+    name: `r${s.run} i${s.iter}`,
+    x: t.x,
+    y: scale(t.y),
+    line: { color: s.color, dash: s.dash, width: 1.5 },
+    legendgroup: `r${s.run}`,
+    showlegend: false,
+    connectgaps: false,
+  }));
+  // Empty traces that only draw legend entries: one per run (clicking it
+  // toggles the whole legendgroup), plus one carrying the colour bar.
+  const runs = [...new Map(styled.map(({ s }) => [s.run, s.dash])).entries()];
+  const runLegend = runs.map(([run, dash]) => ({
+    type: "scatter",
+    mode: "lines",
+    name: `run ${run}`,
+    x: [null],
+    y: [null],
+    line: { color: "#888", dash },
+    legendgroup: `r${run}`,
+    hoverinfo: "skip",
+  }));
+  const allIters = [...styles.values()].map((s) => s.iter);
+  const colorBar = {
+    type: "scatter",
+    mode: "markers",
+    x: [null],
+    y: [null],
+    showlegend: false,
+    hoverinfo: "skip",
+    marker: {
+      color: [Math.min(...allIters)],
+      colorscale: "Viridis",
+      cmin: Math.min(...allIters),
+      cmax: Math.max(...allIters),
+      showscale: true,
+      colorbar: { title: { text: "iteration" }, thickness: 12 },
+    },
+  };
+  return [...lines, ...runLegend, colorBar];
+}
+
+export function ChartView({ view, showZero, unit, conversionFactor = 1, defaultSavePath, title, styles }: Props) {
+  const data = useMemo(() => {
+    const scale = (y: Trace["y"]) =>
+      conversionFactor !== 1 ? y.map((v) => (v === null ? null : v * conversionFactor)) : y;
+    if (styles && styles.size > 0) return iterationTraces(view.traces, styles, scale);
+    return view.traces.map((t) => ({
+      type: "scatter",
+      mode: "lines+markers",
+      name: t.name,
+      x: t.x,
+      y: scale(t.y),
+      connectgaps: false,
+    }));
+  }, [view, conversionFactor, styles]);
 
   const rangemode = showZero ? "tozero" : "normal";
 

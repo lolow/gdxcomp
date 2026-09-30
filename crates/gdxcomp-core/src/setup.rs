@@ -67,7 +67,7 @@ pub enum AppMode {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DisplaySetup {
-    /// Files this setup was built against (for reproducing the selection).
+    /// Paths of the files to plot; empty means every loaded file.
     #[serde(default)]
     pub files: Vec<PathBuf>,
     pub symbol: String,
