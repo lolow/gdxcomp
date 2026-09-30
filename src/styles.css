@@ -127,6 +127,22 @@ header.bar .sub {
   flex-shrink: 1;
   min-width: 0;
 }
+.unit-pick {
+  font: inherit;
+  font-family: ui-monospace, monospace;
+  color: var(--accent);
+  background: transparent;
+  border: 1px dashed var(--accent);
+  border-radius: 4px;
+  padding: 0 4px;
+  margin: 0 2px;
+  cursor: pointer;
+}
+.unit-pick.on {
+  background: var(--accent-soft);
+  border-style: solid;
+  font-weight: 600;
+}
 .symbol-title-chips {
   display: flex;
   flex-wrap: wrap;

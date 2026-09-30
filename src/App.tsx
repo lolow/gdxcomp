@@ -24,6 +24,7 @@ import type {
   TableView as TableViewData,
 } from "./types";
 import { defaultSetup } from "./types";
+import { extractUnits, unitSegments } from "./units";
 import {
   fullRange,
   isIterationSet,
@@ -34,12 +35,6 @@ import {
 
 const WITCH_SYMBOLS = new Set(["Q", "Q_EMI", "Q_FUEL", "I", "I_EN"]);
 const UNIT_FIELDS = new Set(["level", "lower", "upper"]);
-
-function extractUnit(text: string): string | null {
-  const matches = text.match(/\[([^\]]+)\]/g);
-  if (!matches) return null;
-  return matches[matches.length - 1].slice(1, -1);
-}
 
 function detectMode(syms: SymbolMeta[]): AppMode {
   if (WITCH_SYMBOLS.size > 0 && syms.some((s) => WITCH_SYMBOLS.has(s.name))) return "witch";
@@ -61,7 +56,9 @@ export function App() {
   const [aboutOpen, setAboutOpen] = useState(false);
   const [mode, setMode] = useState<AppMode>("gdx");
   const [savedSession, setSavedSession] = useState<Session | null>(null);
-  const [unitChoice, setUnitChoice] = useState<string | null>(null);
+  // Per-symbol unit picks, kept in memory only so a restart or reload
+  // brings every symbol back to its default unit.
+  const [unitMemory, setUnitMemory] = useState<Record<string, { base: string; choice: string | null }>>({});
   const [emiGwp, setEmiGwp] = useState<Record<string, number>>({});
   const [iterRange, setIterRange] = useState<IterRange | null>(null);
   // Aggregation the backend actually applied (it defaults unset dims from
@@ -413,14 +410,21 @@ export function App() {
     return `${firstPath.slice(0, sepIdx)}${sep}${filename}`;
   }, [chartFilenameHint, files]);
 
-  const currentUnit = useMemo(() => {
-    if (!currentSymbol?.text || !setup) return null;
-    if (!UNIT_FIELDS.has(setup.field)) return null;
-    return extractUnit(currentSymbol.text);
+  const symbolUnits = useMemo(() => {
+    if (!currentSymbol?.text || !setup || !UNIT_FIELDS.has(setup.field)) return [];
+    return extractUnits(currentSymbol.text);
   }, [currentSymbol, setup?.field]);
+  const rememberedUnit = setup ? unitMemory[setup.symbol] : undefined;
+  const currentUnit =
+    rememberedUnit && symbolUnits.includes(rememberedUnit.base)
+      ? rememberedUnit.base
+      : symbolUnits[0] ?? null;
 
-  // When the symbol or base unit changes, reset any manual unit choice.
-  useEffect(() => { setUnitChoice(null); }, [currentUnit]);
+  function rememberUnit(base: string, choice: string | null) {
+    if (!setup) return;
+    const symbol = setup.symbol;
+    setUnitMemory((m) => ({ ...m, [symbol]: { base, choice } }));
+  }
 
   // Unit conversions. Multiple may apply at once (e.g. GtCe with e=co2 gives
   // both Gt/yr and GtCO2e/yr as targets); we accumulate all matches as
@@ -482,7 +486,10 @@ export function App() {
     return opts.length > 1 ? opts : null;
   }, [currentUnit, currentSymbol, setup, emiGwp]);
 
-  const displayUnit = unitOptions ? (unitChoice ?? unitOptions[0].label) : currentUnit;
+  const unitChoice = rememberedUnit?.base === currentUnit ? rememberedUnit.choice : null;
+  const displayUnit = unitOptions
+    ? (unitOptions.find((o) => o.label === unitChoice) ?? unitOptions[0]).label
+    : currentUnit;
   const conversionFactor =
     unitOptions?.find((o) => o.label === displayUnit)?.factor ?? 1;
 
@@ -554,7 +561,7 @@ export function App() {
             unitOptions ? (
               <div className="toggle-group unit-toggle">
                 {unitOptions.map((o) => (
-                  <button key={o.label} className={displayUnit === o.label ? "on" : ""} onClick={() => setUnitChoice(o.label)}>{o.label}</button>
+                  <button key={o.label} className={displayUnit === o.label ? "on" : ""} onClick={() => currentUnit && rememberUnit(currentUnit, o.label)}>{o.label}</button>
                 ))}
               </div>
             ) : (
@@ -565,7 +572,26 @@ export function App() {
         {currentSymbol && (
           <div className="symbol-title" title={currentSymbol.text || undefined}>
             <span className="symbol-title-name">{currentSymbol.name}</span>
-            {currentSymbol.text && <span className="symbol-title-text">{currentSymbol.text}</span>}
+            {currentSymbol.text && (
+              <span className="symbol-title-text">
+                {symbolUnits.length > 1
+                  ? unitSegments(currentSymbol.text).map((seg, i) =>
+                      seg.unit ? (
+                        <button
+                          key={i}
+                          className={`unit-pick${seg.text === currentUnit ? " on" : ""}`}
+                          onClick={() => rememberUnit(seg.text, null)}
+                          title={`Plot in ${seg.text}`}
+                        >
+                          {seg.text}
+                        </button>
+                      ) : (
+                        seg.text
+                      ),
+                    )
+                  : currentSymbol.text}
+              </span>
+            )}
             {filterChips.length > 0 && (
               <span className="symbol-title-chips">
                 {filterChips.map((c) => (

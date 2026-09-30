@@ -148,8 +148,10 @@ pub fn common_symbols(files: &[LoadedFile]) -> Vec<SymbolMeta> {
     shared
 }
 
+/// First `[...]` group of a symbol description. Descriptions listing several
+/// units (e.g. `[T$/TW] [T$/million vehicles] ... (DAC)`) put the main one first.
 fn extract_unit(text: &str) -> Option<&str> {
-    let start = text.rfind('[')?;
+    let start = text.find('[')?;
     let end = text[start..].find(']').map(|i| start + i)?;
     Some(&text[start + 1..end])
 }
@@ -523,8 +525,10 @@ mod tests {
     }
 
     #[test]
-    fn unit_is_the_last_bracket_group() {
-        assert_eq!(extract_unit("Q [x] level [TWh/yr]"), Some("TWh/yr"));
+    fn unit_is_the_first_bracket_group() {
+        let text = "Average cost of investment [T$/TW] [T$/million vehicles] [T$/GtonC] (DAC)";
+        assert_eq!(extract_unit(text), Some("T$/TW"));
+        assert_eq!(extract_unit("capacity [TW][GtCe](DAC)"), Some("TW"));
         assert_eq!(extract_unit("unclosed [TWh"), None);
     }
 }

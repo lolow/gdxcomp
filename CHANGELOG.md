@@ -8,6 +8,40 @@ All notable changes are documented here. Versions follow [semver](https://semver
 
 ---
 
+## [0.0.12] — 2026-09-30
+
+### Added
+- Iteration view for WITCH convergence runs. A folder of files named
+  `<core>_r<run>_i<iter>.gdx` is detected automatically: lines are coloured
+  by iteration (viridis, with a colour bar) and dashed by run, and an
+  "Iterations" panel has min/max sliders for iteration and run that filter
+  both chart and table. Iteration sets may plot up to 200 lines.
+- Save the chart as PNG (camera button): opens a save dialog in the folder
+  of the first GDX file, with a filename and an in-image title built from
+  the symbol, field and filters. Exported at 2× resolution.
+- Clickable units: when a description lists several `[units]`, each one in
+  the header is a button to plot in that unit. The choice (and any
+  conversion toggle) is remembered per symbol until the app is restarted.
+
+### Changed
+- Non-x dimensions default to **mean** instead of sum for intensive
+  quantities, guessed from the unit (prices, `%`, per-capita, per-energy or
+  per-carbon denominators). The Filters panel shows the aggregation
+  actually applied.
+- The default unit is now the **first** bracketed unit of a description
+  (e.g. `T$/TW` for `MCOST_INV`), not the last.
+
+---
+
+## [0.0.11] — 2026-06-16
+
+### Changed
+- Performance sweep: async Tauri commands, raw-mode FFI reads, `Arc<str>`
+  label interning, skip-table and `HashSet` filters, and a DataTable row cap.
+  See `BENCH_BASELINE.md` for numbers.
+
+---
+
 ## [0.0.10] — 2026-05-28
 
 ### Added
