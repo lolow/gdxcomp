@@ -45,8 +45,14 @@ fn main() {
 
     let dst = cfg.build_target("gdxcclib64").build();
 
-    // With `build_target`, artifacts land in the CMake binary dir (`<dst>/build`).
-    let libdir = dst.join("build");
+    // With `build_target`, artifacts land in the CMake binary dir (`<dst>/build`),
+    // except with multi-config generators (Visual Studio, the MSVC default),
+    // which add a per-configuration subdirectory such as `build/Release`.
+    let libdir = ["", "Release", "Debug", "RelWithDebInfo", "MinSizeRel"]
+        .iter()
+        .map(|config| dst.join("build").join(config))
+        .find(|dir| dir.join("gdxcclib64.lib").exists())
+        .unwrap_or_else(|| dst.join("build"));
 
     println!("cargo:rustc-link-search=native={}", libdir.display());
     println!("cargo:rustc-link-lib=dylib=gdxcclib64");

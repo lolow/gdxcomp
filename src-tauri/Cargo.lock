@@ -1017,6 +1017,7 @@ dependencies = [
 name = "gdxcomp"
 version = "0.0.12"
 dependencies = [
+ "gdx-sys",
  "gdxcomp-core",
  "serde",
  "serde_json",
