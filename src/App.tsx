@@ -41,16 +41,6 @@ function extractUnit(text: string): string | null {
   return matches[matches.length - 1].slice(1, -1);
 }
 
-function isIntensiveUnit(unit: string): boolean {
-  if (/^(%|index|ratio|1|-)$/i.test(unit)) return true;
-  const parts = unit.split('/');
-  if (parts.length < 2) return false;
-  const denom = parts[1].toLowerCase();
-  const qty = ['gj', 'mj', 'tj', 'ej', 'kwh', 'mwh', 'gwh', 'twh',
-    'toe', 'tc', 'tco2', 'gtc', 'gtonc', 'ton', 'cap', 'person'];
-  return qty.some(t => denom.includes(t));
-}
-
 function detectMode(syms: SymbolMeta[]): AppMode {
   if (WITCH_SYMBOLS.size > 0 && syms.some((s) => WITCH_SYMBOLS.has(s.name))) return "witch";
   return "gdx";
@@ -74,6 +64,9 @@ export function App() {
   const [unitChoice, setUnitChoice] = useState<string | null>(null);
   const [emiGwp, setEmiGwp] = useState<Record<string, number>>({});
   const [iterRange, setIterRange] = useState<IterRange | null>(null);
+  // Aggregation the backend actually applied (it defaults unset dims from
+  // the symbol's unit), so the filter panel shows what the chart computes.
+  const [effectiveAgg, setEffectiveAgg] = useState<Record<string, DimAgg>>({});
 
   const syncFromBackend = useCallback(async () => {
     const f = await api.listFiles();
@@ -176,9 +169,10 @@ export function App() {
       setLoading(true);
       api
         .getChartView(setup)
-        .then(({ view: v }) => {
+        .then(({ view: v, setup: effective }) => {
           if (!cancelled) {
             setChartView(v);
+            setEffectiveAgg(effective.dimAgg);
             setError(null);
             setLoading(false);
           }
@@ -299,6 +293,7 @@ export function App() {
     setSetup(s);
     setChartView(null);
     setTableView(null);
+    setEffectiveAgg({});
   }
 
   function patchSetup(patch: Partial<DisplaySetup>) {
@@ -487,11 +482,6 @@ export function App() {
     return opts.length > 1 ? opts : null;
   }, [currentUnit, currentSymbol, setup, emiGwp]);
 
-  const defaultAgg = useMemo<DimAgg>(() => {
-    if (!currentUnit) return "sum";
-    return isIntensiveUnit(currentUnit) ? "mean" : "sum";
-  }, [currentUnit]);
-
   const displayUnit = unitOptions ? (unitChoice ?? unitOptions[0].label) : currentUnit;
   const conversionFactor =
     unitOptions?.find((o) => o.label === displayUnit)?.factor ?? 1;
@@ -646,7 +636,7 @@ export function App() {
                 mode={mode}
                 onChange={patchSetup}
                 fetchKeys={fetchKeys}
-                defaultAgg={defaultAgg}
+                effectiveAgg={effectiveAgg}
               />
             </>
           ) : (

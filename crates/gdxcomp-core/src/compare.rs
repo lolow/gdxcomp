@@ -492,3 +492,39 @@ fn group_for(groups: &mut Vec<FileGroup>, file_index: usize) -> &mut FileGroup {
     });
     groups.last_mut().unwrap()
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn intensive_units_default_to_mean() {
+        for text in [
+            "carbon tax [T$/GtonC]",
+            "price [$/tCO2]",
+            "share [%]",
+            "per capita GDP [T$/cap]",
+            "cost [$/MWh]",
+        ] {
+            assert_eq!(default_dim_agg(text), DimAgg::Mean, "{text}");
+        }
+    }
+
+    #[test]
+    fn extensive_or_unknown_units_default_to_sum() {
+        for text in [
+            "emissions [GtCe/yr]",
+            "energy [TWh/yr]",
+            "investment [T$]",
+            "no unit here",
+        ] {
+            assert_eq!(default_dim_agg(text), DimAgg::Sum, "{text}");
+        }
+    }
+
+    #[test]
+    fn unit_is_the_last_bracket_group() {
+        assert_eq!(extract_unit("Q [x] level [TWh/yr]"), Some("TWh/yr"));
+        assert_eq!(extract_unit("unclosed [TWh"), None);
+    }
+}
