@@ -8,6 +8,7 @@
 mod cache;
 mod compare;
 mod error;
+mod iteration;
 mod model;
 mod setup;
 mod witch;
@@ -17,5 +18,6 @@ pub use compare::{
     TableRow, TableView, Trace, XValue,
 };
 pub use error::{CoreError, Result};
+pub use iteration::{iteration_tags, IterTag};
 pub use model::{LoadedFile, Rec, SymbolKind, SymbolMeta};
 pub use setup::{AppMode, DimAgg, DisplaySetup, Field};

@@ -3,11 +3,14 @@ use std::collections::{HashMap, HashSet};
 use serde::Serialize;
 
 use crate::error::{CoreError, Result};
+use crate::iteration::iteration_tags;
 use crate::model::{LoadedFile, Rec, SymbolKind, SymbolMeta};
 use crate::setup::{AppMode, DimAgg, DisplaySetup, Field};
 use crate::witch::YearMapper;
 
 const MAX_TRACES: usize = 30;
+// Convergence sets are coloured by a gradient, so many more lines stay readable.
+const MAX_ITER_TRACES: usize = 200;
 
 /// A single x-axis value: either a categorical string or a numeric year.
 #[derive(Debug, Clone, Serialize)]
@@ -241,6 +244,9 @@ fn build_internal(files: &[LoadedFile], setup: &DisplaySetup, want_table: bool) 
         if file.symbol(&setup.symbol).is_none() {
             continue;
         }
+        if !setup.files.is_empty() && !setup.files.contains(&file.path) {
+            continue;
+        }
         let records = file.read_records_arc(&setup.symbol)?;
         for rec in records.iter() {
             if !passes_filters(rec, &filter_sets) {
@@ -294,10 +300,25 @@ fn build_internal(files: &[LoadedFile], setup: &DisplaySetup, want_table: bool) 
         })
         .collect();
 
-    if traces.len() > MAX_TRACES {
+    // Stems come from paths because callers may overwrite `label` with a scenario name.
+    let stems: Vec<String> = files
+        .iter()
+        .map(|f| {
+            f.path
+                .file_stem()
+                .map(|s| s.to_string_lossy().into_owned())
+                .unwrap_or_default()
+        })
+        .collect();
+    let max_traces = if iteration_tags(&stems).is_some() {
+        MAX_ITER_TRACES
+    } else {
+        MAX_TRACES
+    };
+    if traces.len() > max_traces {
         return Err(CoreError::TooManyTraces {
             traces: traces.len(),
-            max: MAX_TRACES,
+            max: max_traces,
         });
     }
 
