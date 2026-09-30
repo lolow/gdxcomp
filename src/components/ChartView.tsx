@@ -15,6 +15,7 @@ interface Props {
   conversionFactor?: number;
   defaultSavePath: string;
   title: string;
+  onError?: (message: string) => void;
   /** Convergence-set styling by trace name; replaces the per-file legend. */
   styles?: Map<string, IterStyle> | null;
 }
@@ -22,7 +23,8 @@ interface Props {
 // The title (variable, description, field, mapping) is baked into the
 // exported image only — the on-screen chart already shows the same info in
 // the app's own header, so a persistent Plotly title would duplicate it.
-// It's added just for the toImage capture, then removed again.
+// It's added only to the off-screen copy that toImage renders, so the live
+// chart is never touched and keeps the user's zoom and legend toggles.
 //
 // title.automargin does NOT grow the top margin to fit the title text here
 // (verified against plotly.js-basic-dist-min 3.5.1 with title.xref/yref set
@@ -31,26 +33,33 @@ interface Props {
 // top edge — right on top of the zero line for charts whose data starts
 // near zero. chartTitle (App.tsx) can be up to two lines (name + filter
 // chips), so we reserve a fixed margin.t sized for two lines instead of
-// relying on automargin, and restore the original margin afterward.
+// relying on automargin.
 const EXPORT_TITLE_MARGIN_T = 56;
 
-async function saveChartAsPng(gd: unknown, defaultSavePath: string, title: string) {
-  const path = await save({
+interface GraphDiv extends HTMLElement {
+  data: unknown[];
+  layout: { margin?: Record<string, number> } & Record<string, unknown>;
+}
+
+async function saveChartAsPng(gd: GraphDiv, defaultSavePath: string, title: string) {
+  let path = await save({
     defaultPath: defaultSavePath,
     filters: [{ name: "PNG image", extensions: ["png"] }],
   });
   if (!path) return;
-  await Plotly.relayout(gd as never, {
-    "title.text": title,
-    "title.font.size": 13,
-    "title.x": 0,
-    "title.xanchor": "left",
-    "title.xref": "paper",
-    "title.yref": "paper",
-    "margin.t": EXPORT_TITLE_MARGIN_T,
-  } as never);
-  const dataUrl = await Plotly.toImage(gd as never, { format: "png" });
-  await Plotly.relayout(gd as never, { "title.text": "", "margin.t": 24 } as never);
+  // Linux file dialogs do not append the filter's extension.
+  if (!/\.png$/i.test(path)) path += ".png";
+  const dataUrl = await Plotly.toImage(
+    {
+      data: gd.data,
+      layout: {
+        ...gd.layout,
+        title: { text: title, font: { size: 13 }, x: 0, xanchor: "left", xref: "paper", yref: "paper" },
+        margin: { ...gd.layout.margin, t: EXPORT_TITLE_MARGIN_T },
+      },
+    },
+    { format: "png", width: gd.clientWidth, height: gd.clientHeight, scale: 2 },
+  );
   const bytes = Uint8Array.from(atob(dataUrl.split(",")[1]), (c) => c.charCodeAt(0));
   await api.saveChartImage(path, Array.from(bytes));
 }
@@ -104,7 +113,7 @@ function iterationTraces(traces: Trace[], styles: Map<string, IterStyle>, scale:
   return [...lines, ...runLegend, colorBar];
 }
 
-export function ChartView({ view, showZero, unit, conversionFactor = 1, defaultSavePath, title, styles }: Props) {
+export function ChartView({ view, showZero, unit, conversionFactor = 1, defaultSavePath, title, onError, styles }: Props) {
   const data = useMemo(() => {
     const scale = (y: Trace["y"]) =>
       conversionFactor !== 1 ? y.map((v) => (v === null ? null : v * conversionFactor)) : y;
@@ -164,8 +173,8 @@ export function ChartView({ view, showZero, unit, conversionFactor = 1, defaultS
               name: "Save chart as PNG…",
               title: "Save chart as PNG…",
               icon: Plotly.Icons.camera,
-              click: (gd: unknown) => {
-                saveChartAsPng(gd, defaultSavePath, title);
+              click: (gd: GraphDiv) => {
+                saveChartAsPng(gd, defaultSavePath, title).catch((e) => onError?.(String(e)));
               },
             },
           ],

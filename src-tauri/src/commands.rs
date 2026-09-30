@@ -6,7 +6,7 @@
 
 use std::collections::{HashMap, HashSet};
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 
 use gdxcomp_core::{
@@ -435,10 +435,17 @@ pub fn load_session(app: AppHandle) -> Option<Session> {
 // Chart image export
 // ---------------------------------------------------------------------------
 
-/// Writes chart PNG bytes to a path the user already chose via the native
-/// save dialog, so no additional filesystem scoping is needed here.
+/// Writes chart PNG bytes to a path the user chose via the native save
+/// dialog. The webview can call this with any path, so the extension check
+/// keeps it from overwriting anything but images.
 #[tauri::command]
 pub fn save_chart_image(path: String, data: Vec<u8>) -> CmdResult<()> {
+    let is_png = Path::new(&path)
+        .extension()
+        .is_some_and(|e| e.eq_ignore_ascii_case("png"));
+    if !is_png {
+        return Err(format!("chart images must be saved as .png: {path}"));
+    }
     fs::write(&path, data).map_err(|e| e.to_string())
 }
 

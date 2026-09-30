@@ -590,6 +590,7 @@ export function App() {
                     conversionFactor={conversionFactor}
                     defaultSavePath={chartDefaultSavePath}
                     title={chartTitle}
+                    onError={setError}
                     styles={iterStyles}
                   />
                 </Suspense>
