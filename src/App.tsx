@@ -16,6 +16,7 @@ import { SymbolPicker } from "./components/SymbolPicker";
 import type {
   AppMode,
   ChartView as ChartViewData,
+  DimAgg,
   DisplaySetup,
   FileMeta,
   Session,
@@ -63,6 +64,9 @@ export function App() {
   const [unitChoice, setUnitChoice] = useState<string | null>(null);
   const [emiGwp, setEmiGwp] = useState<Record<string, number>>({});
   const [iterRange, setIterRange] = useState<IterRange | null>(null);
+  // Aggregation the backend actually applied (it defaults unset dims from
+  // the symbol's unit), so the filter panel shows what the chart computes.
+  const [effectiveAgg, setEffectiveAgg] = useState<Record<string, DimAgg>>({});
 
   const syncFromBackend = useCallback(async () => {
     const f = await api.listFiles();
@@ -165,9 +169,10 @@ export function App() {
       setLoading(true);
       api
         .getChartView(setup)
-        .then(({ view: v }) => {
+        .then(({ view: v, setup: effective }) => {
           if (!cancelled) {
             setChartView(v);
+            setEffectiveAgg(effective.dimAgg);
             setError(null);
             setLoading(false);
           }
@@ -288,6 +293,7 @@ export function App() {
     setSetup(s);
     setChartView(null);
     setTableView(null);
+    setEffectiveAgg({});
   }
 
   function patchSetup(patch: Partial<DisplaySetup>) {
@@ -630,6 +636,7 @@ export function App() {
                 mode={mode}
                 onChange={patchSetup}
                 fetchKeys={fetchKeys}
+                effectiveAgg={effectiveAgg}
               />
             </>
           ) : (

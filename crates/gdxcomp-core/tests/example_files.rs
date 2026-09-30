@@ -44,7 +44,7 @@ fn bau_files_share_common_symbols() {
 
 #[test]
 #[ignore = "requires gdx_examples/ (large files)"]
-fn refine_setup_defaults_non_x_dims_to_sum() {
+fn refine_setup_defaults_extensive_to_sum() {
     let devel = load("results_ssp2_bau_devel.gdx");
     let master = load("results_ssp2_bau_master.gdx");
     let files = vec![devel, master];
@@ -54,14 +54,33 @@ fn refine_setup_defaults_non_x_dims_to_sum() {
 
     let refined = refine_setup(&files, &setup).unwrap();
 
-    // dim 1 (region) must be auto-defaulted to sum aggregation.
+    // ykali is an extensive quantity — region dim must default to sum.
     assert_eq!(
         refined.dim_agg.get(&1).copied(),
         Some(DimAgg::Sum),
-        "refine_setup must default non-x dim to sum"
+        "refine_setup must default extensive non-x dim to sum"
     );
-    // x-axis filter is left empty (show all) — not restricted by refine_setup.
     assert!(refined.filters.get(&0).is_none_or(|f| f.is_empty()));
+}
+
+#[test]
+#[ignore = "requires gdx_examples/ (large files)"]
+fn refine_setup_defaults_intensive_to_mean() {
+    let devel = load("results_ssp2_bau_devel.gdx");
+    let master = load("results_ssp2_bau_master.gdx");
+    let files = vec![devel, master];
+
+    let mut setup = DisplaySetup::for_symbol("ctax");
+    setup.x_dim = 0; // year; dim 1 = region
+
+    let refined = refine_setup(&files, &setup).unwrap();
+
+    // ctax has unit T$/GtonC — intensive → region dim must default to mean.
+    assert_eq!(
+        refined.dim_agg.get(&1).copied(),
+        Some(DimAgg::Mean),
+        "refine_setup must default intensive non-x dim to mean"
+    );
 }
 
 #[test]

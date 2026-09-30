@@ -9,6 +9,7 @@ interface Props {
   mode: AppMode;
   onChange: (patch: Partial<DisplaySetup>) => void;
   fetchKeys: (dim: number) => Promise<string[]>;
+  effectiveAgg?: Record<string, DimAgg>;
 }
 
 function uelToYear(uel: string): number | null {
@@ -48,7 +49,7 @@ function YearRangeFilter({ uels, filter, onFilter }: {
   return <RangeSlider labels={sorted.map((e) => e.year)} lo={minIdx} hi={maxIdx} onChange={setRange} />;
 }
 
-export function FilterPanel({ symbol, setup, mode, onChange, fetchKeys }: Props) {
+export function FilterPanel({ symbol, setup, mode, onChange, fetchKeys, effectiveAgg }: Props) {
   const [keysByDim, setKeysByDim] = useState<Record<number, string[]>>({});
 
   useEffect(() => {
@@ -100,8 +101,8 @@ export function FilterPanel({ symbol, setup, mode, onChange, fetchKeys }: Props)
   function nonXValue(dim: number): string {
     const uel = setup.filters[String(dim)]?.[0];
     if (uel) return uel;
-    const agg = setup.dimAgg[String(dim)];
-    return agg ? `__agg:${agg}` : "__agg:sum";
+    const agg = setup.dimAgg[String(dim)] ?? effectiveAgg?.[String(dim)] ?? "sum";
+    return `__agg:${agg}`;
   }
 
   function setNonX(dim: number, value: string) {
