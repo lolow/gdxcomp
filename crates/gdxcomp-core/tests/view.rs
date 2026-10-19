@@ -268,6 +268,67 @@ fn build_table_matches_build_view_agg() {
     assert_eq!(tbl.table, view.table);
 }
 
+fn write_series(path: &Path, periods: &[&str]) {
+    let mut w = GdxWriter::create(path, "test").unwrap();
+    let recs: Vec<Record> = periods
+        .iter()
+        .flat_map(|t| [par(&[t, "north"], 1.0), par(&[t, "south"], 3.0)])
+        .collect();
+    w.write_symbol("p", "tax", 2, SymbolType::Parameter, 0, &recs).unwrap();
+    w.finish().unwrap();
+}
+
+/// The first file starts later than the second, as when one scenario is
+/// defined from t=10 and another from t=6.
+fn late_and_early_files() -> (TempDir, Vec<LoadedFile>) {
+    let dir = tempfile::tempdir().unwrap();
+    let late = dir.path().join("late.gdx");
+    let early = dir.path().join("early.gdx");
+    write_series(&late, &["9", "10", "11"]);
+    write_series(&early, &["8", "9", "10", "11"]);
+    let files = vec![LoadedFile::open(&late).unwrap(), LoadedFile::open(&early).unwrap()];
+    (dir, files)
+}
+
+fn x_strs(t: &gdxcomp_core::Trace) -> Vec<String> {
+    t.x.iter()
+        .map(|x| match x {
+            gdxcomp_core::XValue::Str(s) => s.clone(),
+            gdxcomp_core::XValue::Num(n) => n.to_string(),
+        })
+        .collect()
+}
+
+#[test]
+fn numeric_x_is_sorted_across_files_when_aggregating() {
+    let (_d, files) = late_and_early_files();
+    let mut setup = DisplaySetup::for_symbol("p");
+    setup.dim_agg.insert(1, DimAgg::Mean);
+    let view = build_chart(&files, &setup).unwrap();
+
+    for t in &view.traces {
+        assert_eq!(x_strs(t), ["8", "9", "10", "11"], "{}", t.name);
+    }
+    let late = view.traces.iter().find(|t| t.name == "late").unwrap();
+    assert!(late.y[0].is_nan());
+    assert_eq!(&late.y[1..], [2.0, 2.0, 2.0]);
+}
+
+#[test]
+fn numeric_x_is_sorted_across_files_without_aggregation() {
+    let (_d, files) = late_and_early_files();
+    let mut setup = DisplaySetup::for_symbol("p");
+    setup.filters.insert(1, vec!["south".to_string()]);
+    let view = build_chart(&files, &setup).unwrap();
+
+    for t in &view.traces {
+        assert_eq!(x_strs(t), ["8", "9", "10", "11"], "{}", t.name);
+    }
+    let late = view.traces.iter().find(|t| t.name == "late").unwrap();
+    assert!(late.y[0].is_nan());
+    assert_eq!(&late.y[1..], [3.0, 3.0, 3.0]);
+}
+
 #[test]
 fn nonfinite_values_serialize_as_null() {
     // NaN (missing x in aggregated trace) must not appear in JSON output.

@@ -264,6 +264,7 @@ fn build_internal(files: &[LoadedFile], setup: &DisplaySetup, want_table: bool) 
     let collect_raw = want_table && !needs_agg;
 
     let mut x_order: Vec<String> = Vec::new();
+    let mut x_seen: HashSet<String> = HashSet::new();
     let mut groups: Vec<FileGroup> = Vec::new();
     let mut raw_table: Vec<TableRow> = Vec::new();
 
@@ -283,7 +284,7 @@ fn build_internal(files: &[LoadedFile], setup: &DisplaySetup, want_table: bool) 
             let raw = x_key(rec, setup.x_dim);
             let x = year_str(&raw);
 
-            if needs_agg && !x_order.contains(&x) {
+            if x_seen.insert(x.clone()) {
                 x_order.push(x.clone());
             }
             group_for(&mut groups, fi).push(x, value);
@@ -303,6 +304,17 @@ fn build_internal(files: &[LoadedFile], setup: &DisplaySetup, want_table: bool) 
         }
     }
 
+    // First-seen order is UEL order of whichever file comes first, so a file
+    // whose periods start later would put the others' earlier periods at the
+    // end and draw their lines back in time. Numeric keys (years, t indices)
+    // have a natural order; other categories keep first-seen order.
+    if x_order.iter().all(|x| x.parse::<f64>().is_ok()) {
+        x_order.sort_by(|a, b| {
+            let (a, b) = (a.parse::<f64>().unwrap(), b.parse::<f64>().unwrap());
+            a.total_cmp(&b)
+        });
+    }
+
     let to_xvalue = |s: String| -> XValue {
         if year_mapper.is_some() {
             if let Ok(n) = s.parse::<f64>() {
@@ -320,7 +332,7 @@ fn build_internal(files: &[LoadedFile], setup: &DisplaySetup, want_table: bool) 
                 let y = x_order.iter().map(|x| g.aggregate(x, agg_method)).collect();
                 (x_order.clone(), y)
             } else {
-                g.into_pairs()
+                g.into_pairs(&x_order)
             };
             let x = xs.into_iter().map(&to_xvalue).collect();
             Trace { name, x, y }
@@ -471,10 +483,15 @@ impl FileGroup {
             .unwrap_or(f64::NAN)
     }
 
-    fn into_pairs(self) -> (Vec<String>, Vec<f64>) {
+    /// Pairs follow `order`, with a NaN gap for each x this file lacks: on a
+    /// categorical axis Plotly orders categories by first appearance across
+    /// traces, so every trace must list every x in the shared order.
+    fn into_pairs(self, order: &[String]) -> (Vec<String>, Vec<f64>) {
+        let mut cells: HashMap<String, Vec<f64>> = self.cells.into_iter().collect();
         let mut xs = Vec::new();
         let mut ys = Vec::new();
-        for (x, vals) in self.cells {
+        for x in order {
+            let vals = cells.remove(x).unwrap_or_else(|| vec![f64::NAN]);
             for v in vals {
                 xs.push(x.clone());
                 ys.push(v);
